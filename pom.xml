@@ -8,5 +8,92 @@
     <artifactId>pws</artifactId>
     <version>1.0-SNAPSHOT</version>
 
+    <licenses>
+        <license>
+            <name>GNU License</name>
+            <url>LICENSE</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <name>Tim Anema</name>
+            <email>timanema@hetbaarnschlyceum.nl</email>
+        </developer>
+        <developer>
+            <name>Michiel van den Eshof</name>
+            <email>michieleshof@hetbaarnschlyceum.nl</email>
+        </developer>
+        <developer>
+            <name>Sigert van den Eede</name>
+            <email>sigerteede@hetbaarnschlyceum.nl</email>
+        </developer>
+    </developers>
+
+    <!-- Packaging -->
+    <packaging>jar</packaging>
+    <name>nl.hetbaarnschlyceum.pws.PWS</name>
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+
+    <build>
+        <defaultGoal>clean package install</defaultGoal>
+        <sourceDirectory>${basedir}/src/main/java</sourceDirectory>
+
+        <resources>
+            <resource>
+                <targetPath>.</targetPath>
+                <filtering>true</filtering>
+                <directory>${basedir}/src/main/resources</directory>
+                <includes>
+                    <include>**/*.txt</include>
+                    <include>**/*.png</include>
+                    <include>**/*.mp3</include>
+                    <include>**/*.wav</include>
+                    <include>**/*.gif</include>
+                </includes>
+            </resource>
+            <resource>
+                <targetPath>.</targetPath>
+                <filtering>false</filtering>
+                <directory>${basedir}/src/main/resources-bin</directory>
+                <includes>
+                    <include>**/*.txt</include>
+                    <include>**/*.png</include>
+                    <include>**/*.mp3</include>
+                    <include>**/*.wav</include>
+                    <include>**/*.gif</include>
+                </includes>
+            </resource>
+        </resources>
+
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>2.3.2</version>
+                <configuration>
+                    <source>1.9</source>
+                    <target>1.9</target>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>2.4</version>
+                <configuration>
+                    <archive>
+                        <manifest>
+                            <addClasspath>true</addClasspath>
+                            <classpathPrefix>lib/</classpathPrefix>
+                            <mainClass>nl.hetbaarnschlyceum.pws.PWS</mainClass>
+                        </manifest>
+                    </archive>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 
 </project>
