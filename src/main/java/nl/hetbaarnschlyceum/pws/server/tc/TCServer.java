@@ -10,17 +10,17 @@ public class TCServer
     private Thread server;
     public SQL sql;
 
-    public TCServer(String dbAddress, String dbUser, String dbPass)
+    public TCServer()
     {
         print("TC server wordt gestart op port %s..", Integer.toString(this.port));
-        sql = new SQL(dbAddress, dbUser, dbPass);
+
+        this.sql = new SQL("localhost:3306", "root", "pws-test", this.prefix);
+        this.server = new Thread(new Server(this.port, this.prefix));
+        this.server.start();
     }
 
     private void print(String string, String... args)
     {
         System.out.printf("[%s] %s\n", this.prefix, String.format(string, args));
-
-        this.server = new Thread(new Server(this.port, this.prefix));
-        this.server.start();
     }
 }
