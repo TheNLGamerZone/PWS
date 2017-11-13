@@ -1,5 +1,6 @@
 package nl.hetbaarnschlyceum.pws;
 
+import nl.hetbaarnschlyceum.pws.server.sql.SQL;
 import org.apache.commons.cli.*;
 
 import java.lang.reflect.Constructor;
