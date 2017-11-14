@@ -1,12 +1,17 @@
 package nl.hetbaarnschlyceum.pws.server;
 
+import nl.hetbaarnschlyceum.pws.server.tc.TCServer;
+import nl.hetbaarnschlyceum.pws.server.tc.client.Client;
+
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.Iterator;
+import java.util.UUID;
 
 public class Server implements Runnable
 {
@@ -47,18 +52,67 @@ public class Server implements Runnable
 
     private void handleAccept(SelectionKey key) throws IOException {
         SocketChannel socketChannel = ((ServerSocketChannel) key.channel()).accept();
-        String address =  (new StringBuilder(socketChannel.socket().getInetAddress().toString()))
-                .append(":")
-                .append(socketChannel.socket().getPort()).toString();
+        String address = socketChannel.socket().getInetAddress() + ":" + socketChannel.socket().getPort();
         socketChannel.configureBlocking(false);
-        socketChannel.register(this.selector, SelectionKey.OP_READ);
+        socketChannel.register(this.selector, SelectionKey.OP_READ, address);
+        TCServer.getClientManager().clientConnect(socketChannel);
 
         this.print("Verbinding van %s", address);
     }
 
-    private void handleRead(SelectionKey key)
-    {
+    private void handleRead(SelectionKey key) throws IOException {
+        // msg syntax:
+        // UUID><DATA
 
+        SocketChannel socketChannel = (SocketChannel) key.channel();
+        StringBuilder stringBuilder = new StringBuilder();
+        ByteBuffer byteBuffer = TCServer.getClientManager().getClient(socketChannel).getByteBuffer();
+
+        int read = 0;
+
+        //TODO: Dit werkend maken
+        while ((read = socketChannel.read(byteBuffer)) > 0)
+        {
+            byteBuffer.flip();
+            byte[] bytes = new byte[byteBuffer.limit()];
+
+            byteBuffer.get(bytes);
+            stringBuilder.append(new String(bytes));
+        }
+
+        String data = stringBuilder.toString();
+        if (data.substring(data.length() - 5).equals("_&2d"))
+        {
+            this.processData(data);
+
+        }
+        //TODO
+    }
+
+    private void processData(String data)
+    {
+        System.out.println(data);
+    }
+
+    public static void sendMessage(UUID uuid, String data)
+    {
+        sendMessage(TCServer.getClientManager().getClient(uuid).getSocketChannel(), data);
+    }
+
+    public static void sendMessage(Client client, String data)
+    {
+        sendMessage(client.getSocketChannel(), data);
+    }
+
+    private static void sendMessage(SocketChannel socketChannel, String data)
+    {
+        ByteBuffer byteBuffer = ByteBuffer.wrap(data.getBytes());
+        try {
+            socketChannel.write(byteBuffer);
+            byteBuffer.rewind();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override

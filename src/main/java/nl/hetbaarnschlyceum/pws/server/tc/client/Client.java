@@ -1,5 +1,7 @@
 package nl.hetbaarnschlyceum.pws.server.tc.client;
 
+import java.nio.ByteBuffer;
+import java.nio.channels.SocketChannel;
 import java.util.UUID;
 
 public class Client {
@@ -14,12 +16,14 @@ public class Client {
     private int status;             // Status van de gebruiker die aangeeft of de gebruiker online is
     private String session_key;     // De AES-sleutel voor de huidige sessie
 
-    public Client(int number, UUID uuid)
-    {
-        this.number = number;
-        this.uuid = uuid;
+    private SocketChannel socketChannel;
+    private ByteBuffer byteBuffer;
 
-        loadPlayer();
+    public Client(SocketChannel socketChannel)
+    {
+        this.socketChannel = socketChannel;
+        this.byteBuffer = ByteBuffer.allocate(1024);
+        this.uuid = UUID.randomUUID();
     }
 
     private void loadPlayer()
@@ -105,5 +109,15 @@ public class Client {
 
     public void setSession_key(String session_key) {
         this.session_key = session_key;
+    }
+
+    public SocketChannel getSocketChannel()
+    {
+        return this.socketChannel;
+    }
+
+    public ByteBuffer getByteBuffer()
+    {
+        return byteBuffer;
     }
 }
