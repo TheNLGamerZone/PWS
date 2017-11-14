@@ -1,11 +1,15 @@
 package nl.hetbaarnschlyceum.pws;
 
 import org.apache.commons.cli.*;
+import org.apache.commons.lang3.StringUtils;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 
 public class PWS {
+    // Globale instellingen
+    public static final int corePoolThreads = 5;
+
     public enum Modes
     {
         TC_SERVER("tcs", "nl.hetbaarnschlyceum.pws.server.tc.TCServer"),
@@ -42,6 +46,41 @@ public class PWS {
         programMode.setArgs(1);
         options.addOption(programMode);
 
+        Option sqlHost = new Option("sqlH",
+                "sqlHost",
+                true,
+                "Hostname van de SQL server (Standaard: localhost)");
+        sqlHost.setArgs(1);
+        options.addOption(sqlHost);
+
+        Option sqlPort = new Option("sqlP",
+                "sqlPort",
+                true,
+                "Port van de SQL server (Standaard: 3306)");
+        sqlPort.setArgs(1);
+        options.addOption(sqlPort);
+
+        Option sqlUser = new Option("sqlU",
+                "sqlUser",
+                true,
+                "Gebruiker van de SQL server (Standaard: root)");
+        sqlUser.setArgs(1);
+        options.addOption(sqlUser);
+
+        Option sqlPass = new Option("sqlPS",
+                "sqlPass",
+                true,
+                "Wachtwoord van de SQL server");
+        sqlPass.setArgs(1);
+        options.addOption(sqlPass);
+
+        Option serverPort = new Option("sP",
+                "serverPort",
+                true,
+                "Port van de TC server (Standaard: 9348)");
+        serverPort.setArgs(1);
+        options.addOption(serverPort);
+
         CommandLineParser parser = new DefaultParser();
         HelpFormatter formatter = new HelpFormatter();
         CommandLine cmd;
@@ -64,12 +103,57 @@ public class PWS {
         {
             if (mode.getArgName().equalsIgnoreCase(programModeString))
             {
+                String host = "localhost", port = "3306", user = "root", pass = null, tcport = "9348";
                 System.out.printf("Programma gestart in modus: %s\n", mode.name());
+
+                if (mode == Modes.TC_SERVER)
+                {
+                    if (cmd.hasOption("sqlPass"))
+                    {
+                        host = cmd.hasOption("sqlHost") ? cmd.getOptionValue("sqlHost") : "localhost";
+                        port = cmd.hasOption("sqlPort") ? cmd.getOptionValue("sqlPort") : "3306";
+                        user = cmd.hasOption("sqlUser") ? cmd.getOptionValue("sqlUser") : "root";
+                        pass = cmd.getOptionValue("sqlPass");
+
+                        if (cmd.hasOption("serverPort"))
+                        {
+                            tcport = cmd.getOptionValue("serverPort");
+                        }
+
+                        if (!(StringUtils.isNumeric(tcport) && StringUtils.isNumeric(port)))
+                        {
+                            System.out.println("'serverPort' en 'sqlPort' moeten numerieke waarden zijn!");
+                            System.exit(-1);
+                        }
+                    }
+                    else
+                    {
+                        System.out.printf("Programma is gestart in modus TC_SERVER, " +
+                                "maar er zijn geen SQL gegevens ingevoerd. \n" +
+                                "Zie de helppagina hieronder voor meer informatie:\n");
+                        formatter.printHelp("pws-tcs", options);
+                        System.exit(-1);
+                    }
+                }
 
                 try {
                     Class<?> mClass = Class.forName(mode.getFqName());
-                    Constructor<?> mConstructor = mClass.getConstructor();
-                    mConstructor.newInstance();
+                    Constructor<?> mConstructor;
+
+                    if (mode == Modes.TC_SERVER)
+                    {
+                        mConstructor = mClass.getConstructor(String.class,
+                                String.class,
+                                String.class,
+                                String.class,
+                                String.class);
+                        mConstructor.newInstance(host, port ,user, pass, tcport);
+                    }
+                    else
+                    {
+                        mConstructor = mClass.getConstructor();
+                        mConstructor.newInstance();
+                    }
                 } catch (ClassNotFoundException
                         | NoSuchMethodException
                         | InstantiationException

@@ -1,4 +1,4 @@
-package nl.hetbaarnschlyceum.pws.server.sql;
+package nl.hetbaarnschlyceum.pws.server.tc.sql;
 
 import org.apache.commons.dbcp.ConnectionFactory;
 import org.apache.commons.dbcp.DriverManagerConnectionFactory;
@@ -37,15 +37,14 @@ public class SQL {
             print("De MySQL driver wordt geladen..");
             Class.forName(this.jdbcDriver);
 
-            print("Verbinding maken met de MySQL server..");
+            print("Verbinding maken met de MySQL server (%s)..", this.dbAddress);
             connection = DriverManager.getConnection(this.dbAddress, this.user, this.pass);
 
             print("Databases controleren..");
             ResultSet resultSet = connection.getMetaData().getCatalogs();
-
             while (resultSet.next())
             {
-                if (resultSet.getString(1).equals("PWSTCS"))
+                if (resultSet.getString(1).equalsIgnoreCase("PWSTCS"))
                 {
                     dbReady = true;
                 }
@@ -54,7 +53,7 @@ public class SQL {
         } catch (ClassNotFoundException e) {
             e.printStackTrace();
         } catch (SQLException e) {
-            print("Er kon geen verbinding worden gemaakt met de MySQL server");
+            print("Er kon geen verbinding worden gemaakt met de MySQL server (%s)", e.getMessage());
             System.exit(-1);
         } finally {
             try {

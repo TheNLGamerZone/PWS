@@ -1,4 +1,4 @@
-package nl.hetbaarnschlyceum.pws.server;
+package nl.hetbaarnschlyceum.pws.server.tc.client;
 
 import java.util.UUID;
 

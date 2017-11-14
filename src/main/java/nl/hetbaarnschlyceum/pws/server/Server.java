@@ -32,7 +32,9 @@ public class Server implements Runnable
             this.serverSocketChannel.register(this.selector, SelectionKey.OP_ACCEPT);
         } catch (IOException e)
         {
+            this.print("Er is een fout op getreden tijdens het opstarten van de server (%s): ", e.getMessage());
             e.printStackTrace();
+            System.exit(-1);
         }
 
         this.print("Server selectors zijn gemaakt.");
@@ -90,7 +92,6 @@ public class Server implements Runnable
                 }
             }
         } catch(IOException e) {
-            System.out.println("IOException, server of port " +this.port+ " terminating. Stack trace:");
             e.printStackTrace();
         }
     }
