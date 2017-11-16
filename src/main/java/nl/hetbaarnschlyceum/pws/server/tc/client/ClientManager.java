@@ -19,6 +19,11 @@ public class ClientManager {
 
     public int registerClient(String name, int number, String hash)
     {
+        // Return codes:
+        //   1: Success
+        //   0: Failed -> Name taken
+        //  -1: Failed -> Number taken
+        //  -2: Failed -> Invalid name (Zou niet mogelijk moeten zijn, maarja)
         return 0;
     }
 

@@ -66,31 +66,40 @@ public class Server implements Runnable
 
         SocketChannel socketChannel = (SocketChannel) key.channel();
         StringBuilder stringBuilder = new StringBuilder();
-        ByteBuffer byteBuffer = TCServer.getClientManager().getClient(socketChannel).getByteBuffer();
+        Client client = TCServer.getClientManager().getClient(socketChannel);
+        ByteBuffer tempBuffer = ByteBuffer.allocate(1024);
 
         int read = 0;
+        while ((read = socketChannel.read(tempBuffer)) > 0) {
+            tempBuffer.flip();
 
-        //TODO: Dit werkend maken
-        while ((read = socketChannel.read(byteBuffer)) > 0)
-        {
-            byteBuffer.flip();
-            byte[] bytes = new byte[byteBuffer.limit()];
-
-            byteBuffer.get(bytes);
-            stringBuilder.append(new String(bytes));
+            /*DEBUG:
+            byte[] bytes = new byte[tempBuffer.limit()];
+            tempBuffer.get(bytes);
+            print("Ontvangen: " + new String(bytes));*/
         }
+
+        tempBuffer.flip();
+        client.byteBuffer.flip();
+        client.byteBuffer = ByteBuffer.allocate(1024).put(client.byteBuffer).put(tempBuffer).flip();
+
+        System.out.println(client);
+
+        byte[] bytes = new byte[client.byteBuffer.limit()];
+        client.byteBuffer.get(bytes);
+        stringBuilder.append(new String(bytes));
 
         String data = stringBuilder.toString();
-        if (data.substring(data.length() - 5).equals("_&2d"))
+        if (data.length() > 4 && data.substring(data.length() - 4).equals("_&2d"))
         {
-            this.processData(data);
-
+            this.processData(client, data);
+            client.byteBuffer.clear();
         }
-        //TODO
     }
 
-    private void processData(String data)
+    private void processData(Client client, String data)
     {
+        data = data.substring(0, data.length() - 4);
         System.out.println(data);
     }
 

@@ -17,7 +17,7 @@ public class Client {
     private String session_key;     // De AES-sleutel voor de huidige sessie
 
     private SocketChannel socketChannel;
-    private ByteBuffer byteBuffer;
+    public ByteBuffer byteBuffer;
 
     public Client(SocketChannel socketChannel)
     {
@@ -114,10 +114,5 @@ public class Client {
     public SocketChannel getSocketChannel()
     {
         return this.socketChannel;
-    }
-
-    public ByteBuffer getByteBuffer()
-    {
-        return byteBuffer;
     }
 }
