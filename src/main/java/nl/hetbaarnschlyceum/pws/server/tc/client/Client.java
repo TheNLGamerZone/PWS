@@ -9,7 +9,6 @@ public class Client {
     private boolean public_cl;      // Boolean die aangeeft of een gebruiker te vinden is
     private int number;             // Nummer van de gebruiker
     private int RSA_public;         // Publieke RSA sleutel van de gebruiker
-    private String hash;            // Gehashte wachtwoord van de gebruiker
     private boolean hidden;         // Boolean die aangeeft of de gebruiker een whitelist heeft
     private int[] whitelist;        // Array met nummers die op de whitelist staan
     private UUID uuid;              // Universally unique identifier van de gebruiker
@@ -61,14 +60,6 @@ public class Client {
 
     public void setRSA_public(int RSA_public) {
         this.RSA_public = RSA_public;
-    }
-
-    public String getHash() {
-        return hash;
-    }
-
-    public void setHash(String hash) {
-        this.hash = hash;
     }
 
     public boolean isHidden() {

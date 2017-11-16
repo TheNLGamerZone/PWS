@@ -117,15 +117,16 @@ public class SQL {
         print("Tables aan het maken..");
         this.updateQuery("USE PWSTCS");
         this.updateQuery("CREATE TABLE CLIENTS (" +
-                "name VARCHAR(255) NOT NULL," +
+                "name VARCHAR(255) UNIQUE NOT NULL," +
                 "public_cl BOOL NOT NULL," +
-                "number INTEGER NOT NULL," +
+                "number INTEGER UNIQUE NOT NULL," +
                 "public_key LONGTEXT NOT NULL," +
                 "hash VARCHAR(64) NOT NULL, " +
                 "hidden BOOL NOT NULL," +
-                "whitelist BLOB NOT NULL," +
-                "uuid VARCHAR(36) NOT NULL," +
-                "status INTEGER NOT NULL)");
+                "whitelist BLOB," +
+                "uuid VARCHAR(36) UNIQUE NOT NULL," +
+                "status INTEGER NOT NULL," +
+                "PRIMARY KEY (uuid))");
         print("Tables gemaakt");
     }
 
@@ -141,7 +142,8 @@ public class SQL {
         print("Connection pool gemaakt");
     }
 
-    public ResultSet runQuery(String query)
+    //TODO: Hier nog luren voor een fout
+    public ResultSet runQuery(String query, String... args)
     {
         ResultSet resultSet = null;
         Connection connection = null;
@@ -151,6 +153,14 @@ public class SQL {
         {
             connection = this.dataSource.getConnection();
             preparedStatement = connection.prepareStatement(query);
+            int index = 1;
+
+            for (String arg : args)
+            {
+                preparedStatement.setString(index, arg);
+                index++;
+            }
+
             resultSet = preparedStatement.executeQuery();
         } catch (SQLException e) {
             e.printStackTrace();
@@ -187,10 +197,16 @@ public class SQL {
 
         try
         {
+            System.out.println("1");
             connection = this.dataSource.getConnection();
+            System.out.println("2");
+
             statement = connection.createStatement();
+            System.out.println("3");
 
             statement.executeUpdate(query);
+            System.out.println("4");
+
         } catch (SQLException e) {
             e.printStackTrace();
         } finally {

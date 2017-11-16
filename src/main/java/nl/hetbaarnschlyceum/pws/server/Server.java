@@ -12,6 +12,7 @@ import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.Iterator;
 import java.util.UUID;
+import java.util.concurrent.Executors;
 
 public class Server implements Runnable
 {
@@ -73,23 +74,26 @@ public class Server implements Runnable
         while ((read = socketChannel.read(tempBuffer)) > 0) {
             tempBuffer.flip();
 
-            /*DEBUG:
             byte[] bytes = new byte[tempBuffer.limit()];
             tempBuffer.get(bytes);
+
+            /*DEBUG:
             print("Ontvangen: " + new String(bytes));*/
         }
 
         tempBuffer.flip();
         client.byteBuffer.flip();
-        client.byteBuffer = ByteBuffer.allocate(1024).put(client.byteBuffer).put(tempBuffer).flip();
+        client.byteBuffer = ByteBuffer.allocate(1024).put(client.byteBuffer).put(tempBuffer);
 
         System.out.println(client);
 
+        client.byteBuffer.flip();
         byte[] bytes = new byte[client.byteBuffer.limit()];
         client.byteBuffer.get(bytes);
         stringBuilder.append(new String(bytes));
 
         String data = stringBuilder.toString();
+        System.out.println("Raw data: " + data);
         if (data.length() > 4 && data.substring(data.length() - 4).equals("_&2d"))
         {
             this.processData(client, data);
@@ -100,7 +104,50 @@ public class Server implements Runnable
     private void processData(Client client, String data)
     {
         data = data.substring(0, data.length() - 4);
-        System.out.println(data);
+
+        try
+        {
+            System.out.println("Data: " + data);
+
+            //MySQL register test:
+            if (data.contains("name=") && data.contains("hash=") && data.contains("number="))
+            {
+                String[] dataArr = data.split("&");
+
+                if (dataArr.length > 2)
+                {
+                    for (String d : dataArr)
+                    {
+                        String[] dt = d.split("=");
+                        String name = null;
+                        String hash = null;
+                        int number = 0;
+
+                        switch (dt[0])
+                        {
+                            case "name":
+                                name = dt[1];
+                                break;
+                            case "hash":
+                                hash = dt[1];
+                                break;
+                            case "number":
+                                number = Integer.valueOf(dt[1]);
+                                break;
+                            default:
+                                break;
+                        }
+
+                        //TODO: Dit fixen -> Loop ergens vast (Wel 'Gebruiker wordt aangemaakt', maar geen 'Resultaat: x' en geen row in sql
+                        int result = TCServer.getClientManager().registerClient(client, name, number, hash);
+                        System.out.println("Resultaat: " + result);
+                    }
+                }
+            }
+        } catch (Exception e)
+        {
+            // Hier alle exceptions opvangen die mogelijk voorkomen
+        }
     }
 
     public static void sendMessage(UUID uuid, String data)
