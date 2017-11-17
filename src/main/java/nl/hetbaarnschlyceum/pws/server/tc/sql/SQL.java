@@ -109,10 +109,15 @@ public class SQL {
         }
 
         this.createConnectionPool();
-        this.createTables();
+        try {
+            this.createTables();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
 
     private void createTables()
+            throws SQLException
     {
         print("Tables aan het maken..");
         this.updateQuery("USE PWSTCS");
@@ -137,12 +142,48 @@ public class SQL {
         objectPool.setMaxActive(4);
 
         ConnectionFactory connectionFactory = new DriverManagerConnectionFactory(this.dbAddress, this.user, this.pass);
-        new PoolableConnectionFactory(connectionFactory, objectPool, null, null, false, true);
+        new PoolableConnectionFactory(connectionFactory,
+                objectPool,
+                null,
+                null,
+                false,
+                true);
         this.dataSource = new PoolingDataSource(objectPool);
         print("Connection pool gemaakt");
     }
 
-    //TODO: Hier nog luren voor een fout
+    private PreparedStatement createPreparedStatement(Connection connection,
+                                                      String query,
+                                                      PreparedStatementSetter preparedStatementSetter)
+            throws SQLException
+    {
+        PreparedStatement preparedStatement = connection.prepareStatement(query);
+        preparedStatementSetter.setValues(preparedStatement);
+
+        return preparedStatement;
+    }
+
+    public boolean entryExists(String query, PreparedStatementSetter preparedStatementSetter)
+            throws SQLException
+    {
+        try (
+                Connection connection = this.dataSource.getConnection();
+                PreparedStatement preparedStatement = this.createPreparedStatement(connection,
+                        query,
+                        preparedStatementSetter);
+                ResultSet resultSet = preparedStatement.executeQuery();
+                )
+        {
+            if (resultSet.next())
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    @Deprecated
     public ResultSet runQuery(String query, String... args)
     {
         ResultSet resultSet = null;
@@ -167,11 +208,6 @@ public class SQL {
         } finally {
             try
             {
-                if (resultSet != null)
-                {
-                    resultSet.close();
-                }
-
                 if (preparedStatement != null)
                 {
                     preparedStatement.close();
@@ -191,24 +227,17 @@ public class SQL {
     }
 
     public void updateQuery(String query)
+            throws SQLException
     {
         Connection connection = null;
         Statement statement = null;
 
         try
         {
-            System.out.println("1");
             connection = this.dataSource.getConnection();
-            System.out.println("2");
-
             statement = connection.createStatement();
-            System.out.println("3");
 
             statement.executeUpdate(query);
-            System.out.println("4");
-
-        } catch (SQLException e) {
-            e.printStackTrace();
         } finally {
             try
             {

@@ -51,7 +51,8 @@ public class Server implements Runnable
         System.out.printf("[%s] %s\n", this.prefix, String.format(msg, args));
     }
 
-    private void handleAccept(SelectionKey key) throws IOException {
+    private void handleAccept(SelectionKey key)
+            throws IOException {
         SocketChannel socketChannel = ((ServerSocketChannel) key.channel()).accept();
         String address = socketChannel.socket().getInetAddress() + ":" + socketChannel.socket().getPort();
         socketChannel.configureBlocking(false);
@@ -61,7 +62,8 @@ public class Server implements Runnable
         this.print("Verbinding van %s", address);
     }
 
-    private void handleRead(SelectionKey key) throws IOException {
+    private void handleRead(SelectionKey key)
+            throws IOException {
         // msg syntax:
         // UUID><DATA
 
@@ -116,13 +118,13 @@ public class Server implements Runnable
 
                 if (dataArr.length > 2)
                 {
+                    String name = null;
+                    String hash = null;
+                    int number = 0;
+
                     for (String d : dataArr)
                     {
                         String[] dt = d.split("=");
-                        String name = null;
-                        String hash = null;
-                        int number = 0;
-
                         switch (dt[0])
                         {
                             case "name":
@@ -137,15 +139,15 @@ public class Server implements Runnable
                             default:
                                 break;
                         }
-
-                        //TODO: Dit fixen -> Loop ergens vast (Wel 'Gebruiker wordt aangemaakt', maar geen 'Resultaat: x' en geen row in sql
-                        int result = TCServer.getClientManager().registerClient(client, name, number, hash);
-                        System.out.println("Resultaat: " + result);
                     }
+
+                    int result = TCServer.getClientManager().registerClient(client, name, number, hash);
+                    System.out.println("Resultaat: " + result);
                 }
             }
         } catch (Exception e)
         {
+            e.printStackTrace();
             // Hier alle exceptions opvangen die mogelijk voorkomen
         }
     }
