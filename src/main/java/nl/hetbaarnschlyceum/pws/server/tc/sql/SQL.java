@@ -8,40 +8,51 @@ import org.apache.commons.pool.impl.GenericObjectPool;
 
 import javax.sql.DataSource;
 import java.sql.*;
+import java.util.UUID;
+
+import static nl.hetbaarnschlyceum.pws.server.tc.TCServer.print;
 
 public class SQL {
     private final String jdbcDriver = "com.mysql.jdbc.Driver";
     private String dbAddress;
     private final String user;
     private final String pass;
-    private final String prefix;
 
     private DataSource dataSource;
 
-    public SQL(String dbAddress, String user, String pass, String prefix)
+    public SQL(String dbAddress,
+               String user,
+               String pass)
     {
         this.dbAddress = "jdbc:mysql://" + dbAddress + "/";
         this.user = user;
         this.pass = pass;
-        this.prefix = prefix;
         this.checkDB();
     }
 
     private void checkDB()
     {
-        Connection connection = null;
         boolean dbReady = false;
 
         try
         {
             print("De MySQL driver wordt geladen..");
             Class.forName(this.jdbcDriver);
+        } catch (ClassNotFoundException e)
+        {
+            e.printStackTrace();
+        }
 
-            print("Verbinding maken met de MySQL server (%s)..", this.dbAddress);
-            connection = DriverManager.getConnection(this.dbAddress, this.user, this.pass);
+        print("Verbinding maken met de MySQL server (%s)..", this.dbAddress);
 
+        try
+                (
+                        Connection connection = DriverManager.getConnection(this.dbAddress, this.user, this.pass);
+                        ResultSet resultSet = connection.getMetaData().getCatalogs()
+
+                )
+        {
             print("Databases controleren..");
-            ResultSet resultSet = connection.getMetaData().getCatalogs();
             while (resultSet.next())
             {
                 if (resultSet.getString(1).equalsIgnoreCase("PWSTCS"))
@@ -49,20 +60,8 @@ public class SQL {
                     dbReady = true;
                 }
             }
-            resultSet.close();
-        } catch (ClassNotFoundException e) {
-            e.printStackTrace();
         } catch (SQLException e) {
-            print("Er kon geen verbinding worden gemaakt met de MySQL server (%s)", e.getMessage());
-            System.exit(-1);
-        } finally {
-            try {
-                if (connection != null) {
-                    connection.close();
-                }
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
+            e.printStackTrace();
         }
 
         if (dbReady)
@@ -80,39 +79,19 @@ public class SQL {
 
     private void createDatabase()
     {
-        Connection connection = null;
-        Statement statement = null;
-
-        try {
-            connection = DriverManager.getConnection(this.dbAddress, this.user, this.pass);
-            statement = connection.createStatement();
-
+        try (
+                Connection connection = DriverManager.getConnection(this.dbAddress, this.user, this.pass);
+                Statement statement = connection.createStatement()
+                )
+        {
             statement.executeUpdate("CREATE DATABASE PWSTCS");
             print("Database aangemaakt");
-        } catch (SQLException e) {
-            e.printStackTrace();
-        } finally {
-            try {
-                if (connection != null)
-                {
-                    connection.close();
-                }
 
-                if (statement != null)
-                {
-                    statement.close();
-                }
-            } catch (SQLException e)
-            {
-                e.printStackTrace();
-            }
-        }
-
-        this.createConnectionPool();
-        try {
+            this.createConnectionPool();
             this.createTables();
         } catch (SQLException e) {
             e.printStackTrace();
+            System.exit(-1);
         }
     }
 
@@ -122,15 +101,16 @@ public class SQL {
         print("Tables aan het maken..");
         this.updateQuery("USE PWSTCS");
         this.updateQuery("CREATE TABLE CLIENTS (" +
-                "name VARCHAR(255) UNIQUE NOT NULL," +
-                "public_cl BOOL NOT NULL," +
-                "number INTEGER UNIQUE NOT NULL," +
-                "public_key LONGTEXT NOT NULL," +
+                "name VARCHAR(255) UNIQUE NOT NULL, " +
+                "public_cl BOOL NOT NULL, " +
+                "number INTEGER UNIQUE NOT NULL, " +
+                "public_key LONGBLOB NOT NULL, " +
                 "hash VARCHAR(64) NOT NULL, " +
-                "hidden BOOL NOT NULL," +
-                "whitelist BLOB," +
-                "uuid VARCHAR(36) UNIQUE NOT NULL," +
-                "status INTEGER NOT NULL," +
+                "hidden BOOL NOT NULL, " +
+                "whitelist MEDIUMTEXT, " +
+                "uuid VARCHAR(36) UNIQUE NOT NULL, " +
+                "status INTEGER NOT NULL, " +
+                "failed_attempts TEXT, " +
                 "PRIMARY KEY (uuid))");
         print("Tables gemaakt");
     }
@@ -141,7 +121,9 @@ public class SQL {
         GenericObjectPool objectPool = new GenericObjectPool();
         objectPool.setMaxActive(4);
 
-        ConnectionFactory connectionFactory = new DriverManagerConnectionFactory(this.dbAddress, this.user, this.pass);
+        ConnectionFactory connectionFactory = new DriverManagerConnectionFactory(this.dbAddress,
+                this.user,
+                this.pass);
         new PoolableConnectionFactory(connectionFactory,
                 objectPool,
                 null,
@@ -163,7 +145,8 @@ public class SQL {
         return preparedStatement;
     }
 
-    public boolean entryExists(String query, PreparedStatementSetter preparedStatementSetter)
+    public boolean entryExists(String query,
+                               PreparedStatementSetter preparedStatementSetter)
             throws SQLException
     {
         try (
@@ -171,7 +154,7 @@ public class SQL {
                 PreparedStatement preparedStatement = this.createPreparedStatement(connection,
                         query,
                         preparedStatementSetter);
-                ResultSet resultSet = preparedStatement.executeQuery();
+                ResultSet resultSet = preparedStatement.executeQuery()
                 )
         {
             if (resultSet.next())
@@ -183,8 +166,71 @@ public class SQL {
         return false;
     }
 
+    public Object[] loadClient(String name)
+            throws SQLException
+    {
+        Object[] clientData = new Object[7];
+        PreparedStatementSetter preparedStatementSetter = preparedStatement -> preparedStatement.setString(1, name);
+
+        try (
+                Connection connection = this.dataSource.getConnection();
+                PreparedStatement preparedStatement = this.createPreparedStatement(connection,
+                        "SELECT public_cl, " +
+                                "number, " +
+                                "public_key, " +
+                                "hidden, " +
+                                "whitelist, " +
+                                "uuid, " +
+                                "status " +
+                                "FROM CLIENTS WHERE name = ?",
+                        preparedStatementSetter);
+                ResultSet resultSet = preparedStatement.executeQuery()
+                )
+        {
+            if (resultSet.next())
+            {
+                clientData[0] = resultSet.getBoolean("public_cl"); // Boolean die aangeeft of een gebruiker te vinden is
+                clientData[1] = resultSet.getInt("number"); // Nummer van de gebruiker
+                clientData[2] = resultSet.getBlob("public_key"); // Publieke RSA sleutel van de gebruiker
+                clientData[3] = resultSet.getBoolean("hidden"); // Boolean die aangeeft of de gebruiker een whitelist heeft
+                clientData[4] = resultSet.getString("whitelist"); // Array met nummers die op de whitelist staan
+                clientData[5] = UUID.fromString(resultSet.getString("uuid")); // Universally unique identifier van de gebruiker
+                clientData[6] = resultSet.getInt("status"); // Status van de gebruiker die aangeeft of de gebruiker online is
+
+                return clientData;
+            } else
+            {
+                return null;
+            }
+        }
+    }
+
+    public String getClientHash(String name)
+            throws SQLException
+    {
+        PreparedStatementSetter preparedStatementSetter = preparedStatement -> preparedStatement.setString(1, name);
+
+        try (
+                Connection connection = this.dataSource.getConnection();
+                PreparedStatement preparedStatement = this.createPreparedStatement(connection,
+                        "SELECT hash FROM CLIENTS WHERE name = ?",
+                        preparedStatementSetter);
+                ResultSet resultSet = preparedStatement.executeQuery()
+                )
+        {
+            if (resultSet.next())
+            {
+                return resultSet.getString("hash");
+            } else
+            {
+                return "NOTFOUND";
+            }
+        }
+    }
+
     @Deprecated
-    public ResultSet runQuery(String query, String... args)
+    public ResultSet runQuery(String query,
+                              String... args)
     {
         ResultSet resultSet = null;
         Connection connection = null;
@@ -229,36 +275,12 @@ public class SQL {
     public void updateQuery(String query)
             throws SQLException
     {
-        Connection connection = null;
-        Statement statement = null;
-
-        try
+        try (
+                Connection connection = this.dataSource.getConnection();
+                Statement statement = connection.createStatement()
+                )
         {
-            connection = this.dataSource.getConnection();
-            statement = connection.createStatement();
-
             statement.executeUpdate(query);
-        } finally {
-            try
-            {
-                if (statement != null)
-                {
-                    statement.close();
-                }
-
-                if (connection != null)
-                {
-                    connection.close();
-                }
-            } catch (SQLException e)
-            {
-                e.printStackTrace();
-            }
         }
-    }
-
-    private void print(String string, String... args)
-    {
-        System.out.printf("[%s] %s\n", this.prefix, String.format(string, args));
     }
 }

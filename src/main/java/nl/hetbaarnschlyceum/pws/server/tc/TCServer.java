@@ -10,21 +10,27 @@ import java.util.concurrent.*;
 
 public class TCServer
 {
-    private final String prefix = "TC Server";
+    private static final String prefix = "TC Server";
     private Thread server;
 
     private static SQL sql;
     private static ScheduledExecutorService executor;
     private static ClientManager clientManager;
 
-    public TCServer(String sqlHost, String sqlPort, String sqlUser, String sqlPass, String serverPort)
+    public TCServer(String sqlHost,
+                    String sqlPort,
+                    String sqlUser,
+                    String sqlPass,
+                    String serverPort)
     {
         print("TC server wordt gestart op port %s..", sqlPort);
 
-        sql = new SQL(String.format("%1$s:%2$s", sqlHost, sqlPort), sqlUser, sqlPass, this.prefix);
+        sql = new SQL(String.format("%1$s:%2$s", sqlHost, sqlPort),
+                sqlUser,
+                sqlPass);
         executor = Executors.newScheduledThreadPool(PWS.corePoolThreads);
         clientManager = new ClientManager();
-        this.server = new Thread(new Server(Integer.valueOf(serverPort), this.prefix));
+        this.server = new Thread(new Server(Integer.valueOf(serverPort)));
         this.server.start();
     }
 
@@ -43,13 +49,15 @@ public class TCServer
         return executor.submit(callable);
     }
 
-    public static ScheduledFuture<?> executeDelayedTask(Callable callable, long delay, TimeUnit timeUnit)
+    public static ScheduledFuture<?> executeDelayedTask(Callable callable,
+                                                        long delay,
+                                                        TimeUnit timeUnit)
     {
         return executor.schedule(callable, delay, timeUnit);
     }
 
-    private void print(String string, String... args)
+    public static void print(String string, String... args)
     {
-        System.out.printf("[%s] %s\n", this.prefix, String.format(string, args));
+        System.out.printf("[%s] %s\n", prefix, String.format(string, args));
     }
 }

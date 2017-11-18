@@ -14,41 +14,38 @@ import java.util.Iterator;
 import java.util.UUID;
 import java.util.concurrent.Executors;
 
+import static nl.hetbaarnschlyceum.pws.server.tc.TCServer.print;
+
 public class Server implements Runnable
 {
     private final int port;
-    private final String prefix;
     private Selector selector;
     private ServerSocketChannel serverSocketChannel;
 
-    public Server(int port, String prefix)
+    public Server(int port)
     {
         this.port = port;
-        this.prefix = prefix;
         init();
     }
 
     private void init() {
         try {
-            this.print("Server selectors worden gemaakt..");
+            print("Server selectors worden gemaakt..");
             this.selector = Selector.open();
             this.serverSocketChannel = ServerSocketChannel.open();
-            this.serverSocketChannel.bind(new InetSocketAddress("localhost", this.port));
+            this.serverSocketChannel.bind(new InetSocketAddress("localhost",
+                    this.port));
             this.serverSocketChannel.configureBlocking(false);
-            this.serverSocketChannel.register(this.selector, SelectionKey.OP_ACCEPT);
+            this.serverSocketChannel.register(this.selector,
+                    SelectionKey.OP_ACCEPT);
         } catch (IOException e)
         {
-            this.print("Er is een fout op getreden tijdens het opstarten van de server (%s): ", e.getMessage());
+            print("Er is een fout op getreden tijdens het opstarten van de server (%s): ", e.getMessage());
             e.printStackTrace();
             System.exit(-1);
         }
 
-        this.print("Server selectors zijn gemaakt.");
-    }
-
-    private void print(String msg, String... args)
-    {
-        System.out.printf("[%s] %s\n", this.prefix, String.format(msg, args));
+        print("Server selectors zijn gemaakt.");
     }
 
     private void handleAccept(SelectionKey key)
@@ -57,9 +54,9 @@ public class Server implements Runnable
         String address = socketChannel.socket().getInetAddress() + ":" + socketChannel.socket().getPort();
         socketChannel.configureBlocking(false);
         socketChannel.register(this.selector, SelectionKey.OP_READ, address);
-        TCServer.getClientManager().clientConnect(socketChannel);
+        TCServer.getClientManager().clientConnect(socketChannel, socketChannel.socket().getInetAddress() + "");
 
-        this.print("Verbinding van %s", address);
+        print("Verbinding van %s", address);
     }
 
     private void handleRead(SelectionKey key)
@@ -142,7 +139,7 @@ public class Server implements Runnable
                     }
 
                     int result = TCServer.getClientManager().registerClient(client, name, number, hash);
-                    System.out.println("Resultaat: " + result);
+                    System.out.println("Resultaat: " + result + "\n" + client.toString());
                 }
             }
         } catch (Exception e)
@@ -175,7 +172,7 @@ public class Server implements Runnable
 
     @Override
     public void run() {
-        this.print("Wachten op inkomende verbindingen..");
+        print("Wachten op inkomende verbindingen..");
 
         try {
             Iterator<SelectionKey> iterator;

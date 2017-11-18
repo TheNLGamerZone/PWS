@@ -2,32 +2,35 @@ package nl.hetbaarnschlyceum.pws.server.tc.client;
 
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
+import java.sql.Blob;
+import java.sql.Timestamp;
+import java.util.ArrayList;
 import java.util.UUID;
 
 public class Client {
     private String name;            // Naam van de gebruiker
-    private boolean public_cl;      // Boolean die aangeeft of een gebruiker te vinden is
+    private boolean publicCL;      // Boolean die aangeeft of een gebruiker te vinden is
     private int number;             // Nummer van de gebruiker
-    private int RSA_public;         // Publieke RSA sleutel van de gebruiker
+    private Blob RSAKey;         // Publieke RSA sleutel van de gebruiker
     private boolean hidden;         // Boolean die aangeeft of de gebruiker een whitelist heeft
     private int[] whitelist;        // Array met nummers die op de whitelist staan
     private UUID uuid;              // Universally unique identifier van de gebruiker
     private int status;             // Status van de gebruiker die aangeeft of de gebruiker online is
-    private String session_key;     // De AES-sleutel voor de huidige sessie
+    private String sessionKey;     // De AES-sleutel voor de huidige sessie
+
+    private ArrayList<String> failedAttempts;
+    private String IP;
 
     private SocketChannel socketChannel;
     public ByteBuffer byteBuffer;
 
-    public Client(SocketChannel socketChannel)
+    public Client(SocketChannel socketChannel, String IP)
     {
         this.socketChannel = socketChannel;
         this.byteBuffer = ByteBuffer.allocate(1024);
         this.uuid = UUID.randomUUID();
-    }
-
-    private void loadPlayer()
-    {
-
+        this.failedAttempts = new ArrayList<>();
+        this.IP = IP;
     }
 
     public String getName() {
@@ -38,12 +41,12 @@ public class Client {
         this.name = name;
     }
 
-    public boolean isPublic_cl() {
-        return public_cl;
+    public boolean isPublic() {
+        return publicCL;
     }
 
-    public void setPublic_cl(boolean public_cl) {
-        this.public_cl = public_cl;
+    public void setPublic(boolean public_cl) {
+        this.publicCL = public_cl;
     }
 
     public int getNumber() {
@@ -54,12 +57,12 @@ public class Client {
         this.number = number;
     }
 
-    public int getRSA_public() {
-        return RSA_public;
+    public Blob getRSAKey() {
+        return RSAKey;
     }
 
-    public void setRSA_public(int RSA_public) {
-        this.RSA_public = RSA_public;
+    public void setRSAKey(Blob RSAKey) {
+        this.RSAKey = RSAKey;
     }
 
     public boolean isHidden() {
@@ -78,11 +81,11 @@ public class Client {
         this.whitelist = whitelist;
     }
 
-    public UUID getUuid() {
+    public UUID getUUID() {
         return uuid;
     }
 
-    public void setUuid(UUID uuid) {
+    public void setUUID(UUID uuid) {
         this.uuid = uuid;
     }
 
@@ -94,16 +97,34 @@ public class Client {
         this.status = status;
     }
 
-    public String getSession_key() {
-        return session_key;
+    public String getSessionKey() {
+        return sessionKey;
     }
 
-    public void setSession_key(String session_key) {
-        this.session_key = session_key;
+    public void setSessionKey(String session_key) {
+        this.sessionKey = session_key;
     }
 
     public SocketChannel getSocketChannel()
     {
         return this.socketChannel;
+    }
+
+    public void addFailedAttempt()
+    {
+        this.failedAttempts.add(String.format("[%1$s] Inlogpoging vanaf %2$s met verkeerd wachtwoord",
+                new Timestamp(System.currentTimeMillis()).toString(),
+                IP));
+    }
+
+    public String toString()
+    {
+        return String.format("name=%s, public_cl=%b, number=%d, hidden=%b, uuid=%s, status=%d",
+                name,
+                publicCL,
+                number,
+                hidden,
+                uuid.toString(),
+                status);
     }
 }
