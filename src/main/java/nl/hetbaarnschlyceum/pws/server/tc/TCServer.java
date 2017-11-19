@@ -4,6 +4,7 @@ import nl.hetbaarnschlyceum.pws.PWS;
 import nl.hetbaarnschlyceum.pws.server.Server;
 import nl.hetbaarnschlyceum.pws.server.tc.client.Client;
 import nl.hetbaarnschlyceum.pws.server.tc.client.ClientManager;
+import nl.hetbaarnschlyceum.pws.server.tc.crypto.Hash;
 import nl.hetbaarnschlyceum.pws.server.tc.sql.SQL;
 
 import java.util.concurrent.*;
@@ -23,7 +24,7 @@ public class TCServer
                     String sqlPass,
                     String serverPort)
     {
-        print("TC server wordt gestart op port %s..", sqlPort);
+        print("[INFO] TC server wordt gestart op port %s..", sqlPort);
 
         sql = new SQL(String.format("%1$s:%2$s", sqlHost, sqlPort),
                 sqlUser,

@@ -30,7 +30,7 @@ public class Server implements Runnable
 
     private void init() {
         try {
-            print("Server selectors worden gemaakt..");
+            print("[INFO] Server selectors worden gemaakt..");
             this.selector = Selector.open();
             this.serverSocketChannel = ServerSocketChannel.open();
             this.serverSocketChannel.bind(new InetSocketAddress("localhost",
@@ -40,12 +40,12 @@ public class Server implements Runnable
                     SelectionKey.OP_ACCEPT);
         } catch (IOException e)
         {
-            print("Er is een fout op getreden tijdens het opstarten van de server (%s): ", e.getMessage());
+            print("[FOUT] Er is een fout op getreden tijdens het opstarten van de server (%s): ", e.getMessage());
             e.printStackTrace();
             System.exit(-1);
         }
 
-        print("Server selectors zijn gemaakt.");
+        print("[INFO] Server selectors zijn gemaakt.");
     }
 
     private void handleAccept(SelectionKey key)
@@ -56,7 +56,7 @@ public class Server implements Runnable
         socketChannel.register(this.selector, SelectionKey.OP_READ, address);
         TCServer.getClientManager().clientConnect(socketChannel, socketChannel.socket().getInetAddress() + "");
 
-        print("Verbinding van %s", address);
+        print("[INFO] Verbinding van %s", address);
     }
 
     private void handleRead(SelectionKey key)
@@ -106,6 +106,7 @@ public class Server implements Runnable
 
         try
         {
+            //DEBUG:
             System.out.println("Data: " + data);
 
             //MySQL register test:
@@ -172,7 +173,7 @@ public class Server implements Runnable
 
     @Override
     public void run() {
-        print("Wachten op inkomende verbindingen..");
+        print("[INFO] Wachten op inkomende verbindingen..");
 
         try {
             Iterator<SelectionKey> iterator;

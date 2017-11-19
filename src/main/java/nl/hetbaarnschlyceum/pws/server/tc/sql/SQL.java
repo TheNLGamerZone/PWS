@@ -36,14 +36,14 @@ public class SQL {
 
         try
         {
-            print("De MySQL driver wordt geladen..");
+            print("[INFO] De MySQL driver wordt geladen..");
             Class.forName(this.jdbcDriver);
         } catch (ClassNotFoundException e)
         {
             e.printStackTrace();
         }
 
-        print("Verbinding maken met de MySQL server (%s)..", this.dbAddress);
+        print("[INFO] Verbinding maken met de MySQL server (%s)..", this.dbAddress);
 
         try
                 (
@@ -52,7 +52,7 @@ public class SQL {
 
                 )
         {
-            print("Databases controleren..");
+            print("[INFO] Databases controleren..");
             while (resultSet.next())
             {
                 if (resultSet.getString(1).equalsIgnoreCase("PWSTCS"))
@@ -67,12 +67,11 @@ public class SQL {
         if (dbReady)
         {
             // Database is aangemaakt, connection pool kan worden gemaakt
-            this.dbAddress = this.dbAddress + "PWSTCS";
             this.createConnectionPool();
         } else
         {
             // Database is nog niet aangemaakt, dus die moeten eerst worden gemaakt
-            print("Database aanmaken..");
+            print("[INFO] Database aanmaken..");
             this.createDatabase();
         }
     }
@@ -85,7 +84,7 @@ public class SQL {
                 )
         {
             statement.executeUpdate("CREATE DATABASE PWSTCS");
-            print("Database aangemaakt");
+            print("[INFO] Database aangemaakt");
 
             this.createConnectionPool();
             this.createTables();
@@ -98,7 +97,7 @@ public class SQL {
     private void createTables()
             throws SQLException
     {
-        print("Tables aan het maken..");
+        print("[INFO] Tabellen aan het maken..");
         this.updateQuery("USE PWSTCS");
         this.updateQuery("CREATE TABLE CLIENTS (" +
                 "name VARCHAR(255) UNIQUE NOT NULL, " +
@@ -112,12 +111,13 @@ public class SQL {
                 "status INTEGER NOT NULL, " +
                 "failed_attempts TEXT, " +
                 "PRIMARY KEY (uuid))");
-        print("Tables gemaakt");
+        print("[INFO] Tabellen gemaakt");
     }
 
     private void createConnectionPool()
     {
-        print("Connection pool maken..");
+        this.dbAddress = this.dbAddress + "PWSTCS?useSSL=false";
+        print("[INFO] Connection pool maken..");
         GenericObjectPool objectPool = new GenericObjectPool();
         objectPool.setMaxActive(4);
 
@@ -131,7 +131,7 @@ public class SQL {
                 false,
                 true);
         this.dataSource = new PoolingDataSource(objectPool);
-        print("Connection pool gemaakt");
+        print("[INFO] Connection pool gemaakt");
     }
 
     private PreparedStatement createPreparedStatement(Connection connection,

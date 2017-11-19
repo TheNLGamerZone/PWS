@@ -8,6 +8,8 @@ import java.util.Scanner;
 
 public class Client
 {
+    public static final String[] forbiddenStrings = new String[]{"&", "=", "_&2d"};
+
     public Client()
     {
         print("Client wordt gestart..");
