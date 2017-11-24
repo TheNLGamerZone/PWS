@@ -33,7 +33,7 @@ public class Server implements Runnable
             print("[INFO] Server selectors worden gemaakt..");
             this.selector = Selector.open();
             this.serverSocketChannel = ServerSocketChannel.open();
-            this.serverSocketChannel.bind(new InetSocketAddress("localhost",
+            this.serverSocketChannel.bind(new InetSocketAddress("0.0.0.0",
                     this.port));
             this.serverSocketChannel.configureBlocking(false);
             this.serverSocketChannel.register(this.selector,

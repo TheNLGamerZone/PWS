@@ -1,28 +1,42 @@
 package nl.hetbaarnschlyceum.pws;
 
+import nl.hetbaarnschlyceum.pws.crypto.KeyManagement;
 import org.apache.commons.cli.*;
 import org.apache.commons.lang3.StringUtils;
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
+import java.security.KeyPair;
+import java.security.Security;
 
 public class PWS {
     // Globale instellingen
     public static final int corePoolThreads = 5;
+    public static Modes currentMode;
+    public static KeyPair keyPair;
 
     public enum Modes
     {
-        TC_SERVER("tcs", "nl.hetbaarnschlyceum.pws.server.tc.TCServer"),
-        CM_SERVER("cms", "nl.hetbaarnschlyceum.pws.server.cm.CMServer"),
-        CLIENT("cl", "nl.hetbaarnschlyceum.pws.client.Client");
+        TC_SERVER("tcs",
+                "nl.hetbaarnschlyceum.pws.server.tc.TCServer",
+                "TC Server"),
+        CM_SERVER("cms",
+                "nl.hetbaarnschlyceum.pws.server.cm.CMServer",
+                "CM Server"),
+        CLIENT("cl",
+                "nl.hetbaarnschlyceum.pws.client.Client",
+                "Client");
 
         private String argName;
         private String fqName;
+        private String prefix;
 
-        Modes(String argName, String fqName)
+        Modes(String argName, String fqName, String prefix)
         {
             this.argName = argName;
             this.fqName = fqName;
+            this.prefix = prefix;
         }
 
         public String getArgName()
@@ -33,6 +47,11 @@ public class PWS {
         public String getFqName()
         {
             return this.fqName;
+        }
+
+        public String getPrefix()
+        {
+            return this.prefix;
         }
     }
 
@@ -136,6 +155,10 @@ public class PWS {
                     }
                 }
 
+                // Hier kunnen nog dingen gebeuren voor startup
+                preStartInit(mode.getPrefix());
+                currentMode = mode;
+
                 try {
                     Class<?> mClass = Class.forName(mode.getFqName());
                     Constructor<?> mConstructor;
@@ -170,5 +193,25 @@ public class PWS {
         System.out.printf("%s is geen geldige modus. Kiez uit tcs, cms of cl.\n", programModeString);
         formatter.printHelp("pws-core", options);
         System.exit(1);
+    }
+
+    private static void preStartInit(String prefix)
+    {
+        Security.addProvider(new BouncyCastleProvider());
+        KeyManagement.init(PWS.class.getProtectionDomain().getCodeSource().getLocation().getPath());
+
+        // Controleren of BouncyCastle geladen is
+        if (Security.getProvider("BC") == null)
+        {
+            System.out.printf("[%s][FOUT] De BouncyCastle security provider kon niet worden geladen!\n",
+                    prefix);
+            System.exit(-1);
+        } else
+        {
+            System.out.printf("[%s][INFO] De BouncyCastle security provider is geladen\n",
+                    prefix);
+        }
+
+        // EC sleutel laden voor ECDSA
     }
 }

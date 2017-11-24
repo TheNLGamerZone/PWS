@@ -2,6 +2,7 @@ package nl.hetbaarnschlyceum.pws.server.tc.client;
 
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
+import java.security.KeyPair;
 import java.sql.Blob;
 import java.sql.Timestamp;
 import java.util.ArrayList;
@@ -20,6 +21,7 @@ public class Client {
 
     private ArrayList<String> failedAttempts;
     private String IP;
+    private KeyPair dhKeys;
 
     private SocketChannel socketChannel;
     public ByteBuffer byteBuffer;
@@ -33,81 +35,109 @@ public class Client {
         this.IP = IP;
     }
 
-    public String getName() {
+    public String getName()
+    {
         return name;
     }
 
-    public void setName(String name) {
+    public void setName(String name)
+    {
         this.name = name;
     }
 
-    public boolean isPublic() {
+    public boolean isPublic()
+    {
         return publicCL;
     }
 
-    public void setPublic(boolean public_cl) {
+    public void setPublic(boolean public_cl)
+    {
         this.publicCL = public_cl;
     }
 
-    public int getNumber() {
+    public int getNumber()
+    {
         return number;
     }
 
-    public void setNumber(int number) {
+    public void setNumber(int number)
+    {
         this.number = number;
     }
 
-    public Blob getRSAKey() {
+    public Blob getRSAKey()
+    {
         return RSAKey;
     }
 
-    public void setRSAKey(Blob RSAKey) {
+    public void setRSAKey(Blob RSAKey)
+    {
         this.RSAKey = RSAKey;
     }
 
-    public boolean isHidden() {
+    public boolean isHidden()
+    {
         return hidden;
     }
 
-    public void setHidden(boolean hidden) {
+    public void setHidden(boolean hidden)
+    {
         this.hidden = hidden;
     }
 
-    public int[] getWhitelist() {
+    public int[] getWhitelist()
+    {
         return whitelist;
     }
 
-    public void setWhitelist(int[] whitelist) {
+    public void setWhitelist(int[] whitelist)
+    {
         this.whitelist = whitelist;
     }
 
-    public UUID getUUID() {
+    public UUID getUUID()
+    {
         return uuid;
     }
 
-    public void setUUID(UUID uuid) {
+    public void setUUID(UUID uuid)
+    {
         this.uuid = uuid;
     }
 
-    public int getStatus() {
+    public int getStatus()
+    {
         return status;
     }
 
-    public void setStatus(int status) {
+    public void setStatus(int status)
+    {
         this.status = status;
     }
 
-    public String getSessionKey() {
+    public String getSessionKey()
+    {
         return sessionKey;
     }
 
-    public void setSessionKey(String session_key) {
+    public void setSessionKey(String session_key)
+    {
         this.sessionKey = session_key;
     }
 
     public SocketChannel getSocketChannel()
     {
         return this.socketChannel;
+    }
+
+    public void setDHKeys(KeyPair keys)
+    {
+        this.dhKeys = keys;
+    }
+
+    public KeyPair getDHKeys()
+    {
+        return dhKeys;
     }
 
     public void addFailedAttempt()

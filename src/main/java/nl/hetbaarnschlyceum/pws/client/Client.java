@@ -19,7 +19,7 @@ public class Client
     private void startConnection()
     {
         try {
-            Socket socket = new Socket("localhost", 9348);
+            Socket socket = new Socket("95.85.53.98", 9348);
             BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
             while(socket.isConnected()) {
                 //synchronized (socket) {

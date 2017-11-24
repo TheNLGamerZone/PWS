@@ -1,4 +1,4 @@
-package nl.hetbaarnschlyceum.pws.server.tc.crypto;
+package nl.hetbaarnschlyceum.pws.crypto;
 
 import org.apache.commons.codec.digest.DigestUtils;
 

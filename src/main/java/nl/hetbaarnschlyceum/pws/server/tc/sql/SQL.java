@@ -61,7 +61,9 @@ public class SQL {
                 }
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            print("[FOUT] Er kon geen verbinding worden gemaakt met de SQL server (Foutcode: %s)",
+                    e.getMessage());
+            System.exit(-1);
         }
 
         if (dbReady)
@@ -71,13 +73,13 @@ public class SQL {
         } else
         {
             // Database is nog niet aangemaakt, dus die moeten eerst worden gemaakt
-            print("[INFO] Database aanmaken..");
             this.createDatabase();
         }
     }
 
     private void createDatabase()
     {
+        print("[INFO] Database aanmaken..");
         try (
                 Connection connection = DriverManager.getConnection(this.dbAddress, this.user, this.pass);
                 Statement statement = connection.createStatement()

@@ -2,16 +2,15 @@ package nl.hetbaarnschlyceum.pws.server.tc;
 
 import nl.hetbaarnschlyceum.pws.PWS;
 import nl.hetbaarnschlyceum.pws.server.Server;
-import nl.hetbaarnschlyceum.pws.server.tc.client.Client;
 import nl.hetbaarnschlyceum.pws.server.tc.client.ClientManager;
-import nl.hetbaarnschlyceum.pws.server.tc.crypto.Hash;
 import nl.hetbaarnschlyceum.pws.server.tc.sql.SQL;
 
+import java.util.Scanner;
 import java.util.concurrent.*;
 
 public class TCServer
 {
-    private static final String prefix = "TC Server";
+    private static final String prefix = PWS.Modes.TC_SERVER.getPrefix();
     private Thread server;
 
     private static SQL sql;
@@ -33,6 +32,22 @@ public class TCServer
         clientManager = new ClientManager();
         this.server = new Thread(new Server(Integer.valueOf(serverPort)));
         this.server.start();
+
+        Scanner scanner = new Scanner(System.in);
+
+        while (true)
+        {
+            String cmd = scanner.nextLine();
+
+            switch (cmd){
+                case "stop":
+                    print("[INFO] Server wordt gestopt..");
+                    System.exit(2);
+                    break;
+                default:
+                    break;
+            }
+        }
     }
 
     public static SQL getSQL()
@@ -59,6 +74,6 @@ public class TCServer
 
     public static void print(String string, String... args)
     {
-        System.out.printf("[%s] %s\n", prefix, String.format(string, args));
+        System.out.printf("[%s]%s\n", prefix, String.format(string, args));
     }
 }
