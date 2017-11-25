@@ -9,7 +9,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.UUID;
 
-import static nl.hetbaarnschlyceum.pws.server.tc.TCServer.print;
+import static nl.hetbaarnschlyceum.pws.PWS.print;
 
 public class ClientManager {
     private ArrayList<Client> loadedClients;

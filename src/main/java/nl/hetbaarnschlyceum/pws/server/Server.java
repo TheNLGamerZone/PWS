@@ -12,9 +12,8 @@ import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.Iterator;
 import java.util.UUID;
-import java.util.concurrent.Executors;
 
-import static nl.hetbaarnschlyceum.pws.server.tc.TCServer.print;
+import static nl.hetbaarnschlyceum.pws.PWS.print;
 
 public class Server implements Runnable
 {

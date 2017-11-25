@@ -10,7 +10,7 @@ import javax.sql.DataSource;
 import java.sql.*;
 import java.util.UUID;
 
-import static nl.hetbaarnschlyceum.pws.server.tc.TCServer.print;
+import static nl.hetbaarnschlyceum.pws.PWS.print;
 
 public class SQL {
     private final String jdbcDriver = "com.mysql.jdbc.Driver";

@@ -1,12 +1,19 @@
 package nl.hetbaarnschlyceum.pws;
 
+import nl.hetbaarnschlyceum.pws.crypto.ECDSA;
 import nl.hetbaarnschlyceum.pws.crypto.KeyManagement;
+import nl.hetbaarnschlyceum.pws.server.tc.TCServer;
 import org.apache.commons.cli.*;
 import org.apache.commons.lang3.StringUtils;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
+import java.net.URL;
+import java.net.URLDecoder;
 import java.security.KeyPair;
 import java.security.Security;
 
@@ -15,6 +22,11 @@ public class PWS {
     public static final int corePoolThreads = 5;
     public static Modes currentMode;
     public static KeyPair keyPair;
+
+    public static void print(String string, String... args)
+    {
+        System.out.printf("[%s]%s\n", currentMode.getPrefix(), String.format(string, args));
+    }
 
     public enum Modes
     {
@@ -26,7 +38,10 @@ public class PWS {
                 "CM Server"),
         CLIENT("cl",
                 "nl.hetbaarnschlyceum.pws.client.Client",
-                "Client");
+                "Client"),
+        KEYGEN("keygen",
+                "nl.hetbaarnschlyceum.pws.crypto.ECDSA",
+                "KeyGen");
 
         private String argName;
         private String fqName;
@@ -57,6 +72,16 @@ public class PWS {
 
     public static void main(String[] args)
     {
+        URL url = PWS.class.getProtectionDomain().getCodeSource().getLocation();
+        String jarPath = null;
+        try {
+            jarPath = URLDecoder.decode(url.getFile(), "UTF-8");
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+        }
+
+        String path = new File(jarPath).getParentFile().getPath();
+
         Options options = new Options();
 
         Option programMode = new Option("m", "mode", true, "Mode van het programma");
@@ -155,9 +180,10 @@ public class PWS {
                     }
                 }
 
-                // Hier kunnen nog dingen gebeuren voor startup
-                preStartInit(mode.getPrefix());
                 currentMode = mode;
+
+                // Hier kunnen nog dingen gebeuren voor startup
+                preStartInit(mode.getPrefix(), path);
 
                 try {
                     Class<?> mClass = Class.forName(mode.getFqName());
@@ -171,6 +197,14 @@ public class PWS {
                                 String.class,
                                 String.class);
                         mConstructor.newInstance(host, port ,user, pass, tcport);
+                    }
+                    else if (mode == Modes.KEYGEN)
+                    {
+                        try {
+                            ECDSA.generateKeyPair(path);
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
                     }
                     else
                     {
@@ -195,10 +229,10 @@ public class PWS {
         System.exit(1);
     }
 
-    private static void preStartInit(String prefix)
+    private static void preStartInit(String prefix, String path)
     {
         Security.addProvider(new BouncyCastleProvider());
-        KeyManagement.init(PWS.class.getProtectionDomain().getCodeSource().getLocation().getPath());
+        KeyManagement.init(path);
 
         // Controleren of BouncyCastle geladen is
         if (Security.getProvider("BC") == null)

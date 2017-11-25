@@ -10,7 +10,6 @@ import java.util.concurrent.*;
 
 public class TCServer
 {
-    private static final String prefix = PWS.Modes.TC_SERVER.getPrefix();
     private Thread server;
 
     private static SQL sql;
@@ -23,7 +22,7 @@ public class TCServer
                     String sqlPass,
                     String serverPort)
     {
-        print("[INFO] TC server wordt gestart op port %s..", sqlPort);
+        PWS.print("[INFO] TC server wordt gestart op port %s..", sqlPort);
 
         sql = new SQL(String.format("%1$s:%2$s", sqlHost, sqlPort),
                 sqlUser,
@@ -41,7 +40,7 @@ public class TCServer
 
             switch (cmd){
                 case "stop":
-                    print("[INFO] Server wordt gestopt..");
+                    PWS.print("[INFO] Server wordt gestopt..");
                     System.exit(2);
                     break;
                 default:
@@ -70,10 +69,5 @@ public class TCServer
                                                         TimeUnit timeUnit)
     {
         return executor.schedule(callable, delay, timeUnit);
-    }
-
-    public static void print(String string, String... args)
-    {
-        System.out.printf("[%s]%s\n", prefix, String.format(string, args));
     }
 }
