@@ -71,6 +71,13 @@ public class KeyManagement {
         // PublicKey lezen
         byte[] publicKeyData = readPublicKey();
 
+        if (publicKeyData == null)
+        {
+            print("[FOUT] Er kon geen publieke sleutel geladen worden voor het controleren " +
+                    "van de identiteit van de server. Installer het programma opnieuw.");
+            System.exit(-1);
+        }
+
         // KeyPair maken van de data
         KeyFactory keyFactory = KeyFactory.getInstance("ECDSA", "BC");
         X509EncodedKeySpec x509EncodedKeySpec = new X509EncodedKeySpec(publicKeyData);
@@ -93,8 +100,27 @@ public class KeyManagement {
     private static byte[] readPublicKey()
             throws IOException
     {
-        InputStream inputStream = KeyManagement.class.getResourceAsStream("/public.key");
-        return IOUtils.toByteArray(inputStream);
+        String checkSum = Hash.getChecksum(KeyManagement.class.getResourceAsStream("/public.key"));
+
+        if (checkSum == null)
+        {
+            print("[FOUT] Er kon geen publieke sleutel geladen worden voor het controleren " +
+                    "van de identiteit van de server. Installer het programma opnieuw.");
+            System.exit(-1);
+        }
+
+        if (checkSum.equals("d240201c6e8cfb051ce420fda1f9fd1823599b943cd327850d294bc714d5d"))
+        {
+            return IOUtils.toByteArray(KeyManagement.class.getResourceAsStream("/public.key"));
+        } else
+        {
+            print("[FOUT] Het public.key bestand dat wordt gebruikt om de identiteit van de " +
+                    "server te controleren, is niet meer geldig. Installeer de client opnieuw en controleer " +
+                    "uw computer op eventuele virussen of andere kwaadaardige software.");
+            System.exit(-1);
+        }
+
+        return null;
     }
 
     private static byte[] readPrivateKey()
@@ -245,5 +271,7 @@ public class KeyManagement {
         print(" SHA256: Succes");
         print(" HMAC: Succes");
         print(" PWS256: %s", pws256 ? "Succes" : "Gefaald");
+        print(" Checksum public.key: %s",
+                Hash.getChecksum(KeyManagement.class.getResourceAsStream("/public.key")));
     }
 }
