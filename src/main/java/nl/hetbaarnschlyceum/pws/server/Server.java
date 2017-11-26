@@ -60,9 +60,6 @@ public class Server implements Runnable
 
     private void handleRead(SelectionKey key)
             throws IOException {
-        // msg syntax:
-        // UUID><DATA
-
         SocketChannel socketChannel = (SocketChannel) key.channel();
         StringBuilder stringBuilder = new StringBuilder();
         Client client = TCServer.getClientManager().getClient(socketChannel);
@@ -74,9 +71,6 @@ public class Server implements Runnable
 
             byte[] bytes = new byte[tempBuffer.limit()];
             tempBuffer.get(bytes);
-
-            /*DEBUG:
-            print("Ontvangen: " + new String(bytes));*/
         }
 
         tempBuffer.flip();
@@ -91,7 +85,6 @@ public class Server implements Runnable
         stringBuilder.append(new String(bytes));
 
         String data = stringBuilder.toString();
-        System.out.println("Raw data: " + data);
         if (data.length() > 4 && data.substring(data.length() - 4).equals("_&2d"))
         {
             this.processData(client, data);
@@ -105,43 +98,7 @@ public class Server implements Runnable
 
         try
         {
-            //DEBUG:
-            System.out.println("Data: " + data);
 
-            //MySQL register test:
-            if (data.contains("name=") && data.contains("hash=") && data.contains("number="))
-            {
-                String[] dataArr = data.split("&");
-
-                if (dataArr.length > 2)
-                {
-                    String name = null;
-                    String hash = null;
-                    int number = 0;
-
-                    for (String d : dataArr)
-                    {
-                        String[] dt = d.split("=");
-                        switch (dt[0])
-                        {
-                            case "name":
-                                name = dt[1];
-                                break;
-                            case "hash":
-                                hash = dt[1];
-                                break;
-                            case "number":
-                                number = Integer.valueOf(dt[1]);
-                                break;
-                            default:
-                                break;
-                        }
-                    }
-
-                    int result = TCServer.getClientManager().registerClient(client, name, number, hash);
-                    System.out.println("Resultaat: " + result + "\n" + client.toString());
-                }
-            }
         } catch (Exception e)
         {
             e.printStackTrace();

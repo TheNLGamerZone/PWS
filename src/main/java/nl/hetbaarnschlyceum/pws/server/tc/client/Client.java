@@ -1,5 +1,7 @@
 package nl.hetbaarnschlyceum.pws.server.tc.client;
 
+import javax.crypto.SecretKey;
+import javax.crypto.spec.IvParameterSpec;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.security.KeyPair;
@@ -9,19 +11,21 @@ import java.util.ArrayList;
 import java.util.UUID;
 
 public class Client {
-    private String name;            // Naam van de gebruiker
-    private boolean publicCL;      // Boolean die aangeeft of een gebruiker te vinden is
-    private int number;             // Nummer van de gebruiker
-    private Blob RSAKey;         // Publieke RSA sleutel van de gebruiker
-    private boolean hidden;         // Boolean die aangeeft of de gebruiker een whitelist heeft
-    private int[] whitelist;        // Array met nummers die op de whitelist staan
-    private UUID uuid;              // Universally unique identifier van de gebruiker
-    private int status;             // Status van de gebruiker die aangeeft of de gebruiker online is
-    private String sessionKey;     // De AES-sleutel voor de huidige sessie
+    private String name;                            // Naam van de gebruiker
+    private boolean publicCL;                       // Boolean die aangeeft of een gebruiker te vinden is
+    private int number;                             // Nummer van de gebruiker
+    private Blob RSAKey;                            // Publieke RSA sleutel van de gebruiker
+    private boolean hidden;                         // Boolean die aangeeft of de gebruiker een whitelist heeft
+    private int[] whitelist;                        // Array met nummers die op de whitelist staan
+    private UUID uuid;                              // Universally unique identifier van de gebruiker
+    private int status;                             // Status van de gebruiker die aangeeft of de gebruiker online is
+    private SecretKey sessionKey;                   // De AES-sleutel voor de huidige sessie
+    private IvParameterSpec initializationVector;   // De AES-IV
 
     private ArrayList<String> failedAttempts;
     private String IP;
     private KeyPair dhKeys;
+    private long messageCount;
 
     private SocketChannel socketChannel;
     public ByteBuffer byteBuffer;
@@ -115,14 +119,24 @@ public class Client {
         this.status = status;
     }
 
-    public String getSessionKey()
+    public SecretKey getSessionKey()
     {
         return sessionKey;
     }
 
-    public void setSessionKey(String session_key)
+    public void setSessionKey(SecretKey session_key)
     {
         this.sessionKey = session_key;
+    }
+
+    public IvParameterSpec getInitializationVector()
+    {
+        return initializationVector;
+    }
+
+    public void setInitializationVector(IvParameterSpec initializationVector)
+    {
+        this.initializationVector = initializationVector;
     }
 
     public SocketChannel getSocketChannel()
@@ -138,6 +152,23 @@ public class Client {
     public KeyPair getDHKeys()
     {
         return dhKeys;
+    }
+
+    public void setMessageCount(long start)
+    {
+        this.messageCount = start;
+    }
+
+    public boolean messageReceived(long messageCount)
+    {
+        // Controleren of dit bericht het juiste code heeft
+        if (messageCount == this.messageCount + 1)
+        {
+            this.messageCount += 2;
+            return true;
+        }
+
+        return false;
     }
 
     public void addFailedAttempt()

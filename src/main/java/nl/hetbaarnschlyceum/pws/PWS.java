@@ -41,7 +41,10 @@ public class PWS {
                 "Client"),
         KEYGEN("keygen",
                 "nl.hetbaarnschlyceum.pws.crypto.ECDSA",
-                "KeyGen");
+                "KeyGen"),
+        CRYPTOTEST("null",
+                "null",
+                "CryptoTest");
 
         private String argName;
         private String fqName;
@@ -142,6 +145,16 @@ public class PWS {
         }
 
         String programModeString = cmd.getOptionValue("mode");
+
+        // Kijken of het een cryptotest is
+        if (programModeString.equals("cryptotest"))
+        {
+            currentMode = Modes.CRYPTOTEST;
+
+            preStartInit(currentMode.getPrefix(), path);
+            KeyManagement.runTests();
+            return;
+        }
 
         for (Modes mode : Modes.values())
         {

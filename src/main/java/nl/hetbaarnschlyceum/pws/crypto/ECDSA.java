@@ -68,59 +68,69 @@ public class ECDSA {
     }
 
     public static String createSignature(String message)
-            throws NoSuchProviderException,
-            NoSuchAlgorithmException,
-            InvalidKeyException,
-            UnsupportedEncodingException,
-            SignatureException,
-            NoKeyPairLoadedException
     {
-        if (PWS.currentMode == PWS.Modes.TC_SERVER)
-        {
-            // Gebruik TC sleutel
-            KeyPair keyPair = PWS.keyPair;
-
-            if (keyPair != null)
+        try {
+            if (PWS.currentMode == PWS.Modes.TC_SERVER ||
+                    PWS.currentMode == PWS.Modes.CRYPTOTEST)
             {
-                Signature signature = Signature.getInstance("SHA256withECDSA", "BC");
+                // Gebruik TC sleutel
+                KeyPair keyPair = PWS.keyPair;
 
-                signature.initSign(keyPair.getPrivate());
-                signature.update(message.getBytes("UTF-8"));
+                if (keyPair != null &&
+                        keyPair.getPrivate() != null)
+                {
+                    Signature signature = Signature.getInstance("SHA256withECDSA", "BC");
 
-                return bytesToHex(signature.sign());
-            } else
-            {
-                throw new NoKeyPairLoadedException("TC_SIGNATURE_SIGN");
+                    signature.initSign(keyPair.getPrivate());
+                    signature.update(message.getBytes("UTF-8"));
+
+                    return bytesToHex(signature.sign());
+                } else {
+                    throw new NoKeyPairLoadedException("TC_SIGNATURE_SIGN");
+                }
+            } else {
+                print("[FOUT] Programma probeert een bericht te ondertekenen, maar heeft geen sleutel");
             }
-        } else
+        } catch (NoSuchProviderException |
+                NoSuchAlgorithmException |
+                InvalidKeyException |
+                UnsupportedEncodingException |
+                SignatureException |
+                NoKeyPairLoadedException e)
         {
-            print("[FOUT] Programma probeert een bericht te ondertekenen, maar heeft geen sleutel");
+            e.printStackTrace();
         }
 
         return null;
     }
 
     public static boolean verifySignature(String message, String signatureData)
-            throws NoSuchProviderException,
-            NoSuchAlgorithmException,
-            NoKeyPairLoadedException,
-            InvalidKeyException,
-            UnsupportedEncodingException,
-            SignatureException
     {
-        KeyPair keyPair = PWS.keyPair;
+        try {
+            KeyPair keyPair = PWS.keyPair;
 
-        if (keyPair != null)
+            if (keyPair != null &&
+                    keyPair.getPublic() != null)
+            {
+                Signature signature = Signature.getInstance("SHA256withECDSA", "BC");
+
+                signature.initVerify(keyPair.getPublic());
+                signature.update(message.getBytes("UTF-8"));
+
+                return signature.verify(hexToBytes(signatureData));
+            } else {
+                throw new NoKeyPairLoadedException("TC_SIGNATURE_VERIFY");
+            }
+        } catch (NoSuchProviderException |
+                NoSuchAlgorithmException |
+                NoKeyPairLoadedException |
+                InvalidKeyException |
+                UnsupportedEncodingException |
+                SignatureException e)
         {
-            Signature signature = Signature.getInstance("SHA256withECDSA", "BC");
-
-            signature.initVerify(keyPair.getPublic());
-            signature.update(message.getBytes("UTF-8"));
-
-            return signature.verify(hexToBytes(signatureData));
-        } else
-        {
-            throw new NoKeyPairLoadedException("TC_SIGNATURE_VERIFY");
+            e.printStackTrace();
         }
+
+        return false;
     }
 }

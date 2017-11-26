@@ -3,6 +3,7 @@ package nl.hetbaarnschlyceum.pws.server.tc.client;
 import nl.hetbaarnschlyceum.pws.server.tc.OperationResult;
 import nl.hetbaarnschlyceum.pws.server.tc.TCServer;
 
+import javax.crypto.SecretKey;
 import java.nio.channels.SocketChannel;
 import java.sql.Blob;
 import java.sql.SQLException;
@@ -28,6 +29,26 @@ public class ClientManager {
     {
         //TODO: Hier nog iets maken dat een tempban oid maakt
         client.addFailedAttempt();
+    }
+
+    /**
+     * Hiermee kan de client uitloggen
+     * @param client De client
+     * @return Een string met de AES-sleutels, zodat er nog een laatste bericht kan worden gestuurd
+     */
+    public SecretKey clientLogout(Client client)
+    {
+        print("[INFO] Gebruiker %s probeert uit te loggen..", client.getName());
+
+        if (this.loadedClients.contains(client))
+        {
+            SecretKey sessionKey = client.getSessionKey();
+
+            this.loadedClients.remove(client);
+            return sessionKey;
+        }
+
+        return null;
     }
 
     public int clientLogin(Client client, String name, String hash)

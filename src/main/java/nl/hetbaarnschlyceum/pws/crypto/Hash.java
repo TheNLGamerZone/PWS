@@ -12,11 +12,14 @@ public class Hash {
     public static String generateHMAC(String message, String key)
     {
         try {
-            final Charset asciiCs = Charset.forName("US-ASCII");
-            final Mac sha256_HMAC = Mac.getInstance("HmacSHA256");
-            final SecretKeySpec secret_key = new javax.crypto.spec.SecretKeySpec(asciiCs.encode(key).array(), "HmacSHA256");
-            sha256_HMAC.init(secret_key);
-            final byte[] mac_data = sha256_HMAC.doFinal(asciiCs.encode(message).array());
+            final Charset charSet = Charset.forName("US-ASCII");
+            final Mac hmacSHA256 = Mac.getInstance("HmacSHA256");
+            final SecretKeySpec secret_key = new javax.crypto.spec.SecretKeySpec(charSet.encode(key).array(),
+                    "HmacSHA256");
+
+            hmacSHA256.init(secret_key);
+
+            final byte[] mac_data = hmacSHA256.doFinal(charSet.encode(message).array());
             StringBuilder result = new StringBuilder();
 
             for (final byte element : mac_data)
