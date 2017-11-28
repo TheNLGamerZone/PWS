@@ -24,6 +24,9 @@ public class Loginscreen {
         Alert notRegistered = new Alert(Alert.AlertType.INFORMATION);
         notRegistered.setContentText("Inloggen vanwege BETA");
 
+
+        final String[] loginname = {" "};
+        final String[] loginpassword = {" "};
         loginbutton.setOnAction(event -> {
             if(textfieldname.getText().contains("_&2d") || textfieldname.getText().contains("&") || textfieldname.getText().contains("=") || textfieldpassword.getText().contains("_&2d") || textfieldpassword.getText().contains("&") || textfieldpassword.getText().contains("=")){
                 textfieldname.setText(" ");
@@ -31,9 +34,15 @@ public class Loginscreen {
             }
             else {
                 Mainscreen.showMainscreen(window);
+                loginname[0] = textfieldname.getText();
+                loginpassword[0] = textfieldpassword.getText();
             }
         });
-        registerbutton.setOnAction(e -> Registerscreen.showRegisterscreen(window));
+        registerbutton.setOnAction(e -> {
+            Registerscreen.showRegisterscreen(window);
+
+                });
+
         textfieldname.setLayoutX(360);
         textfieldname.setLayoutY(218);
         textfieldname.setPrefWidth(100);
