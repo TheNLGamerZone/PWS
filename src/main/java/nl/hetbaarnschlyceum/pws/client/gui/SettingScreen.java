@@ -1,4 +1,4 @@
-package nl.hetbaarnschlyceum.pws.client.GUI;
+package nl.hetbaarnschlyceum.pws.client.gui;
 
 
 
@@ -13,7 +13,7 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
-public class Settingsscreen {
+public class SettingScreen {
     public static Scene showSettingsscreen(Stage window){
         //Linkerdeel vd instellingen
         VBox linksinstellingen = new VBox();
@@ -28,7 +28,7 @@ public class Settingsscreen {
         tfoldpassword.setPromptText("Oud wachtwoord");
         tfoldpassword.setMaxSize(200,6);
         Button buttonresetpassword = new Button("Reset");
-        buttonresetpassword.setOnAction(e -> Loginscreen.showLoginscreen(window));
+        buttonresetpassword.setOnAction(e -> LoginScreen.showLoginscreen(window));
         Label spacerlabel = new Label(" ");
         Label labelstatus = new Label("Status");
         ChoiceBox<String> cbstatus = new ChoiceBox<>();
@@ -63,7 +63,7 @@ public class Settingsscreen {
         //onder
         HBox onder = new HBox();
         Button buttontohomescreen = new Button("Terug naar het hoofdscherm");
-        buttontohomescreen.setOnAction(e -> Mainscreen.showMainscreen(window));
+        buttontohomescreen.setOnAction(e -> MainScreen.showMainscreen(window, "TODO: fixen"));
         onder.setAlignment(Pos.CENTER);
         onder.getChildren().add(buttontohomescreen);
         onder.setMinHeight(100);

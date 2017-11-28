@@ -1,4 +1,4 @@
-package nl.hetbaarnschlyceum.pws.client.GUI;
+package nl.hetbaarnschlyceum.pws.client.gui;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
@@ -6,8 +6,11 @@ import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.Pane;
 import javafx.stage.Stage;
+import nl.hetbaarnschlyceum.pws.client.Client;
 
-public class Loginscreen {
+import java.util.Arrays;
+
+public class LoginScreen {
 
     public static Scene showLoginscreen(Stage window){
         int thoog = 4;
@@ -15,7 +18,8 @@ public class Loginscreen {
         Button registerbutton = new Button("Registreren");
         TextField textfieldname = new TextField();
         Alert foutmelding = new Alert(Alert.AlertType.ERROR);
-        foutmelding.setContentText("FOUT! Je mag geen & of = gebruiken in de inlognaam");
+        foutmelding.setContentText("De volgende karakters zijn niet toegestaan: " +
+                Arrays.toString(Client.forbiddenStrings));
         TextField textfieldpassword = new TextField();
         Label labelname = new Label("Naam:");
         Label labelpassword = new Label("Wachtwoord:");
@@ -25,23 +29,21 @@ public class Loginscreen {
         notRegistered.setContentText("Inloggen vanwege BETA");
 
 
-        final String[] loginname = {" "};
-        final String[] loginpassword = {" "};
+        final String[] loginname = new String[1];
+        final String[] loginpassword = new String[1];
         loginbutton.setOnAction(event -> {
-            if(textfieldname.getText().contains("_&2d") || textfieldname.getText().contains("&") || textfieldname.getText().contains("=") || textfieldpassword.getText().contains("_&2d") || textfieldpassword.getText().contains("&") || textfieldpassword.getText().contains("=")){
-                textfieldname.setText(" ");
+            if(Arrays.stream(Client.forbiddenStrings).parallel().anyMatch(textfieldname.getText()::contains))
+            {
+                textfieldname.setText("");
                 foutmelding.show();
             }
             else {
-                Mainscreen.showMainscreen(window);
                 loginname[0] = textfieldname.getText();
                 loginpassword[0] = textfieldpassword.getText();
+                MainScreen.showMainscreen(window, loginname[0]);
             }
         });
-        registerbutton.setOnAction(e -> {
-            Registerscreen.showRegisterscreen(window);
-
-                });
+        registerbutton.setOnAction(e -> RegisterScreen.showRegisterscreen(window));
 
         textfieldname.setLayoutX(360);
         textfieldname.setLayoutY(218);

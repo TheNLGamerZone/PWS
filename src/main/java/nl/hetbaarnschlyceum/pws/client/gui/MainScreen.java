@@ -1,4 +1,4 @@
-package nl.hetbaarnschlyceum.pws.client.GUI;
+package nl.hetbaarnschlyceum.pws.client.gui;
 
 import javafx.scene.control.*;
 import javafx.scene.layout.BorderPane;
@@ -6,10 +6,12 @@ import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
+import nl.hetbaarnschlyceum.pws.client.gui.call.CallScreen;
 
 
-public class Mainscreen {
-    public static Scene showMainscreen(Stage window){
+public class MainScreen {
+    public static Scene showMainscreen(Stage window,
+                                       String userName){
         //linkerdeel vh hoofdscherm
         Label labelcontacts = new Label("Contacten");
         TextField tfsearchuser = new TextField();
@@ -25,10 +27,10 @@ public class Mainscreen {
         lvcontacts.getItems().addAll(ArrayGebelde[0],ArrayGebelde[1]);
         final String[] userInCall = {" "};
         Button buttoncallup = new Button("Bel op");
-        buttoncallup.setOnAction(e ->  Callscreen.showCallscreen(window));
+        buttoncallup.setOnAction(e ->  CallScreen.showCallscreen(window));
 
         //rechterdeel vh hoofdscherm
-        Label labelloggedin = new Label("Ingelogd als <user>" );
+        Label labelloggedin = new Label("Ingelogd als " + userName );
         Button buttonsettings = new Button(" Instellingen");
         Button buttonlogout = new Button("Uitloggen");
         Label labelcallnumber = new Label("Nummer Bellen");
@@ -36,7 +38,7 @@ public class Mainscreen {
         tfnumber.setMaxSize(150,5);
         tfnumber.setPromptText("Nummer");
         Button buttoncallnumber = new Button("Bellen");
-        buttoncallnumber.setOnAction(e -> Callscreen.showCallscreen(window));
+        buttoncallnumber.setOnAction(e -> CallScreen.showCallscreen(window));
         Label labelfailedcalls = new Label("Mislukte inlogpogingen");
         ListView lvfailedcalls = new ListView();
         lvfailedcalls.setMaxSize(250,150);
@@ -44,9 +46,9 @@ public class Mainscreen {
         ListView lvincomingcalls = new ListView();
         lvincomingcalls.setMaxSize(250,100);
         Button buttonacceptcall = new Button("Accepteer inkomende oproep");
-        buttonsettings.setOnAction(e -> Settingsscreen.showSettingsscreen(window));
-        buttonlogout.setOnAction(e -> Loginscreen.showLoginscreen(window));
-        buttonacceptcall.setOnAction(e -> Callscreen.showCallscreen(window));
+        buttonsettings.setOnAction(e -> SettingScreen.showSettingsscreen(window));
+        buttonlogout.setOnAction(e -> LoginScreen.showLoginscreen(window));
+        buttonacceptcall.setOnAction(e -> CallScreen.showCallscreen(window));
         String call1 = "Tim Anema 12345";
         String nocall = "Geen";
         boolean call = true;

@@ -1,4 +1,4 @@
-package nl.hetbaarnschlyceum.pws.client.GUI;
+package nl.hetbaarnschlyceum.pws.client.gui.call;
 
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -7,13 +7,13 @@ import javafx.scene.control.Label;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
-public class Connectscreen {
+public class ConnectScreen {
     public static Scene showCallscreen(Stage window, String calleduser){
         Label label = new Label("Verbinden met " + calleduser);
         Button buttonendcall = new Button("Ophangen");
         Button buttontoconversation = new Button("Ga door naar gesprek");
-        buttontoconversation.setOnAction(e -> Conversationscreen.showConversationscreen(window, calleduser));
-        buttonendcall.setOnAction(e -> Endofcallscreen.showEndofcallscreen(window,calleduser));
+        buttontoconversation.setOnAction(e -> ConversationScreen.showConversationscreen(window, calleduser));
+        buttonendcall.setOnAction(e -> EndCallScreen.showEndofcallscreen(window,calleduser));
 
         VBox layoutconnectscreen = new VBox();
 

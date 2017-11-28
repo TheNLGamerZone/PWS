@@ -1,4 +1,4 @@
-package nl.hetbaarnschlyceum.pws.client.GUI;
+package nl.hetbaarnschlyceum.pws.client.gui;
 
 
 import javafx.scene.Scene;
@@ -7,7 +7,7 @@ import javafx.stage.Stage;
 import javafx.scene.layout.Pane;
 
 
-public class Registerscreen {
+public class RegisterScreen {
     public static Scene showRegisterscreen(Stage window){
         Button registerbutton = new Button("Registreren");
         int thoog = 4;
@@ -52,7 +52,7 @@ public class Registerscreen {
         Label labelpassword = new Label("Wachtwoord: ");
         Label headerlabel = new Label("Registreren");
         Label labelnr = new Label("Gewenst nummer:");
-        buttontoinlog.setOnAction(e -> Loginscreen.showLoginscreen(window));
+        buttontoinlog.setOnAction(e -> LoginScreen.showLoginscreen(window));
         registerbutton.setLayoutX(370);
         registerbutton.setLayoutY(310);
         buttontoinlog.setLayoutX(650);
