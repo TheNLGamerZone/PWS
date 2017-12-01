@@ -1,5 +1,6 @@
 package nl.hetbaarnschlyceum.pws;
 
+import com.sun.org.apache.xpath.internal.operations.Mod;
 import nl.hetbaarnschlyceum.pws.crypto.ECDSA;
 import nl.hetbaarnschlyceum.pws.crypto.KeyManagement;
 import nl.hetbaarnschlyceum.pws.server.tc.TCServer;
@@ -26,6 +27,39 @@ public class PWS {
     public static void print(String string, String... args)
     {
         System.out.printf("[%s]%s\n", currentMode.getPrefix(), String.format(string, args));
+    }
+
+    public enum MessageIdentifier
+    {
+        REQUEST("REQ", 2), // client -> server                 REQ<<->>request_id<<&>>request
+        REQUEST_RESULT("REQ_RSL", 2), // server -> client      REQ_RSL<<->>request_id<<&>>request_result
+        CONNECTED("CONN_ACK", 0), // client -> server          CONN_ACK
+        DH_START("DH_ST", 1), // server -> client              DH_ST<<->>public_server
+        DH_ACK("DH_ACK", 1), // client -> server               DH_ACK<<->>public_client
+        LOGIN("LGN", 0), // server -> client                   LGN
+        LOGIN_INFORMATION("LGN_INF", 2), // client -> server   LGN_INF<<->>username<<&>>password_hash
+        LOGIN_RESULT("LGN_RSL", 1), // server -> client        LGN_RSL<<->>login_result
+        ;
+
+        private String dataID;
+        private int arguments;
+
+        MessageIdentifier(String dataID,
+                          int arguments)
+        {
+            this.dataID = dataID;
+            this.arguments = arguments;
+        }
+
+        public String getDataID()
+        {
+            return this.dataID;
+        }
+
+        public int getArguments()
+        {
+            return this.arguments;
+        }
     }
 
     public enum Modes
@@ -128,6 +162,13 @@ public class PWS {
         serverPort.setArgs(1);
         options.addOption(serverPort);
 
+        Option serverIP = new Option("sIP",
+                "serverIP",
+                true,
+                "IP van de TC server (Standaard: 95.85.53.98)");
+        serverIP.setArgs(1);
+        options.addOption(serverIP);
+
         CommandLineParser parser = new DefaultParser();
         HelpFormatter formatter = new HelpFormatter();
         CommandLine cmd;
@@ -160,7 +201,12 @@ public class PWS {
         {
             if (mode.getArgName().equalsIgnoreCase(programModeString))
             {
-                String host = "localhost", port = "3306", user = "root", pass = null, tcport = "9348";
+                String host = "localhost",
+                        port = "3306",
+                        user = "root",
+                        pass = null,
+                        tcport = "9348",
+                        serverAdress = "95.85.53.98";
                 System.out.printf("Programma gestart in modus: %s\n", mode.name());
 
                 if (mode == Modes.TC_SERVER)
@@ -193,6 +239,28 @@ public class PWS {
                     }
                 }
 
+                if (mode == Modes.CLIENT)
+                {
+                    if (cmd.hasOption("serverIP"))
+                    {
+                        serverAdress = cmd.getOptionValue("serverIP");
+                    }
+
+                    if (cmd.hasOption("serverPort"))
+                    {
+                        String temPort = cmd.getOptionValue("serverPort");
+
+                        if (StringUtils.isNumeric(temPort))
+                        {
+                            tcport = temPort;
+                        } else
+                        {
+                            System.out.printf("'serverPort' heeft geen numerieke waarde gekregen, " +
+                                    "standaard waarde wordt gebruikt: 9348");
+                        }
+                    }
+                }
+
                 currentMode = mode;
 
                 // Hier kunnen nog dingen gebeuren voor startup
@@ -218,6 +286,12 @@ public class PWS {
                         } catch (IOException e) {
                             e.printStackTrace();
                         }
+                    }
+                    else if (mode == Modes.CLIENT)
+                    {
+                        mConstructor = mClass.getConstructor(String.class,
+                                String.class);
+                        mConstructor.newInstance(serverAdress, tcport);
                     }
                     else
                     {

@@ -10,7 +10,7 @@ public class Client
 {
     public static final String[] forbiddenStrings = new String[]{"&", "=", "_&2d"};
 
-    public Client()
+    public Client(String serverIP, String serverPort)
     {
         print("Client wordt gestart..");
         this.startConnection();
