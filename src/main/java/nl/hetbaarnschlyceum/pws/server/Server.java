@@ -204,7 +204,8 @@ public class Server implements Runnable
 
             String hMAC = "null";
 
-            if (client.getSessionKey() != null)
+            if (client.getSessionKey() != null &&
+                    client.getHMACKey() != null)
             {
                 hMAC = Hash.generateHMAC(formattedMessage, client.getHMACKey());
             }

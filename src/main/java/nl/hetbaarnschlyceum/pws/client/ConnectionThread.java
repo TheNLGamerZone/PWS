@@ -174,6 +174,7 @@ public class ConnectionThread implements Runnable
         if (stringBuffer.toString().contains("_&2d"))
         {
             data = stringBuffer.toString();
+            data = data.substring(0, data.length() - 4);
             stringBuffer = new StringBuilder();
 
             print("[INFO] Data verwerken: %s", data);
@@ -319,7 +320,8 @@ public class ConnectionThread implements Runnable
 
                     print("[INFO] Request verstuurd: %s", request);
 
-                    if (sessionKey != null)
+                    if (sessionKey != null &&
+                            hmacKey != null)
                     {
                         String hMAC = Hash.generateHMAC(request, hmacKey);
                         request = String.format("%s<<*3456*34636*>>%s",
