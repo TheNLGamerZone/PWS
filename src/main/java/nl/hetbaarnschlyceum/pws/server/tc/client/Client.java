@@ -21,7 +21,7 @@ public class Client {
     private int status;                             // Status van de gebruiker die aangeeft of de gebruiker online is
     private SecretKey sessionKey;                   // De AES-sleutel voor de huidige sessie
     private IvParameterSpec initializationVector;   // De AES-IV
-
+    private String hmacKey;
     private ArrayList<String> failedAttempts;
     private String IP;
     private KeyPair dhKeys;
@@ -33,10 +33,14 @@ public class Client {
     public Client(SocketChannel socketChannel, String IP)
     {
         this.socketChannel = socketChannel;
-        this.byteBuffer = ByteBuffer.allocate(1024);
+        this.byteBuffer = ByteBuffer.allocate(8192);
         this.uuid = UUID.randomUUID();
         this.failedAttempts = new ArrayList<>();
         this.IP = IP;
+    }
+    public String getIP()
+    {
+        return this.IP;
     }
 
     public String getName()
@@ -117,6 +121,16 @@ public class Client {
     public void setStatus(int status)
     {
         this.status = status;
+    }
+
+    public String getHMACKey()
+    {
+        return hmacKey;
+    }
+
+    public void setHMACKey(String hmacKey)
+    {
+        this.hmacKey = hmacKey;
     }
 
     public SecretKey getSessionKey()

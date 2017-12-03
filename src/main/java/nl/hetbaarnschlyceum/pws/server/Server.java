@@ -1,15 +1,24 @@
 package nl.hetbaarnschlyceum.pws.server;
 
+import nl.hetbaarnschlyceum.pws.PWS;
+import nl.hetbaarnschlyceum.pws.crypto.ECDH;
+import nl.hetbaarnschlyceum.pws.crypto.Hash;
 import nl.hetbaarnschlyceum.pws.server.tc.TCServer;
 import nl.hetbaarnschlyceum.pws.server.tc.client.Client;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
+import java.nio.charset.Charset;
+import java.nio.charset.CharsetEncoder;
+import java.security.KeyPair;
+import java.security.PublicKey;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.UUID;
 
@@ -20,10 +29,13 @@ public class Server implements Runnable
     private final int port;
     private Selector selector;
     private ServerSocketChannel serverSocketChannel;
+    private static CharsetEncoder charsetEncoder;
 
     public Server(int port)
     {
         this.port = port;
+        charsetEncoder = Charset.forName("US-ASCII").newEncoder();
+
         init();
     }
 
@@ -59,23 +71,52 @@ public class Server implements Runnable
     }
 
     private void handleRead(SelectionKey key)
-            throws IOException {
+    {
         SocketChannel socketChannel = (SocketChannel) key.channel();
         StringBuilder stringBuilder = new StringBuilder();
         Client client = TCServer.getClientManager().getClient(socketChannel);
-        ByteBuffer tempBuffer = ByteBuffer.allocate(1024);
+        ByteBuffer tempBuffer = ByteBuffer.allocate(8192);
 
         int read = 0;
-        while ((read = socketChannel.read(tempBuffer)) > 0) {
-            tempBuffer.flip();
+        try {
+            while ((read = socketChannel.read(tempBuffer)) > 0) {
+                tempBuffer.flip();
 
-            byte[] bytes = new byte[tempBuffer.limit()];
-            tempBuffer.get(bytes);
+                byte[] bytes = new byte[tempBuffer.limit()];
+                tempBuffer.get(bytes);
+            }
+        } catch (IOException e)
+        {
+            print("[WAARSCHUWING] Client (%s) heeft onverwacht de verbinding verbroken: %s",
+                    client.getIP(),
+                    e.getMessage());
+            TCServer.getClientManager().clientConnectionDropped(client);
+
+            try {
+                socketChannel.close();
+            } catch (IOException e1) {
+                e1.printStackTrace();
+            }
+            return;
+        }
+
+        if (read < 0)
+        {
+            print("[WAARSCHUWING] Client (%s) heeft onverwacht de verbinding verbroken",
+                    client.getIP());
+            TCServer.getClientManager().clientConnectionDropped(client);
+
+            try {
+                socketChannel.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            return;
         }
 
         tempBuffer.flip();
         client.byteBuffer.flip();
-        client.byteBuffer = ByteBuffer.allocate(1024).put(client.byteBuffer).put(tempBuffer);
+        client.byteBuffer = ByteBuffer.allocate(8192).put(client.byteBuffer).put(tempBuffer);
 
         System.out.println(client);
 
@@ -95,10 +136,45 @@ public class Server implements Runnable
     private void processData(Client client, String data)
     {
         data = data.substring(0, data.length() - 4);
+        print(" Data ontvangen: %s", data);
+
 
         try
         {
+            Object[] messageData = checkValidMessage(data);
 
+            if (messageData == null)
+            {
+                return;
+            }
+
+            if (messageData[0] == PWS.MessageIdentifier.REQUEST)
+            {
+                // Normaal verzoek
+            } else
+            {
+                // Verbinding maken met de server
+                PWS.MessageIdentifier messageIdentifier = (PWS.MessageIdentifier) messageData[0];
+
+                if (messageIdentifier == PWS.MessageIdentifier.CONNECTED)
+                {
+                    // Verwachte reactie: DH_START
+                    KeyPair keyPair = ECDH.generateKeyPair();
+                    String publicKey = ECDH.getPublicData(keyPair);
+                    String response = this.prepareMessage(client,
+                            PWS.MessageIdentifier.DH_START,
+                            publicKey);
+
+                    client.setDHKeys(keyPair);
+                    sendMessage(client, response);
+                } else if (messageIdentifier == PWS.MessageIdentifier.DH_ACK)
+                {
+                    // Verwachte reactie: LOGIN
+                } else if (messageIdentifier == PWS.MessageIdentifier.LOGIN_INFORMATION)
+                {
+                    // Verwachte reactie: LOGIN_RESULT
+                }
+            }
         } catch (Exception e)
         {
             e.printStackTrace();
@@ -106,22 +182,122 @@ public class Server implements Runnable
         }
     }
 
+    //TODO: AES enzo toevoegen
+    public String prepareMessage(Client client,
+                                 PWS.MessageIdentifier messageIdentifier,
+                                 String... arguments)
+    {
+        if (arguments.length == messageIdentifier.getArguments())
+        {
+            StringBuilder stringBuilder = new StringBuilder();
+
+            for (String argument : arguments)
+            {
+                stringBuilder.append("<<&>>").append(argument);
+            }
+
+            String formattedMessage = String.format("%s<<->>%s<<&>>%s%s_&2d",
+                    messageIdentifier.getDataID(),
+                    UUID.randomUUID().toString(),
+                    "HMAC_X8723784X", //HMAC
+                    stringBuilder.toString());
+
+            String hMAC = "null";
+
+            if (client.getSessionKey() != null)
+            {
+                hMAC = Hash.generateHMAC(formattedMessage, client.getHMACKey());
+            }
+
+            return formattedMessage.replace("HMAC_X8723784X", hMAC);
+        }
+
+        return null;
+    }
+
+    private Object[] checkValidMessage(String data)
+    {
+        if (data.split("<<->>").length != 2)
+        {
+            return null;
+        }
+
+        String mID = data.split("<<->>")[0];
+        PWS.MessageIdentifier messageIdentifier = null;
+
+        for (PWS.MessageIdentifier messageID : PWS.MessageIdentifier.values())
+        {
+            if (mID.equals(messageID.getDataID()))
+            {
+                messageIdentifier = messageID;
+            }
+        }
+
+        if (messageIdentifier == null)
+        {
+            return null;
+        }
+
+        String[] args = data.split("<<->>")[1].split("<<&>>");
+
+        if (messageIdentifier.getArguments() + 2 != args.length)
+        {
+            return null;
+        }
+
+        ArrayList<String> arguments = new ArrayList<>();
+        int i = 0;
+
+        for (String arg : args)
+        {
+            i++;
+
+            if (i < 3)
+            {
+                continue;
+            }
+
+            arguments.add(arg);
+        }
+
+        Object[] messageData = new Object[arguments.size() + 1];
+        messageData[0] = messageIdentifier;
+        i = 1;
+
+        for (String arg : arguments)
+        {
+            messageData[i] = arg;
+        }
+
+        return messageData;
+    }
+
     public static void sendMessage(UUID uuid, String data)
     {
-        sendMessage(TCServer.getClientManager().getClient(uuid).getSocketChannel(), data);
+        Client client = TCServer.getClientManager().getClient(uuid);
+        sendMessage(client, client.getSocketChannel(), data);
     }
 
     public static void sendMessage(Client client, String data)
     {
-        sendMessage(client.getSocketChannel(), data);
+        sendMessage(client, client.getSocketChannel(), data);
     }
 
-    private static void sendMessage(SocketChannel socketChannel, String data)
+    private static void sendMessage(Client client, SocketChannel socketChannel, String data)
     {
-        ByteBuffer byteBuffer = ByteBuffer.wrap(data.getBytes());
+        print(" Bericht naar %s sturen: %s", socketChannel.toString(), data);
+
         try {
-            socketChannel.write(byteBuffer);
-            byteBuffer.rewind();
+            if (client.getSessionKey() != null)
+            {
+                String hMAC = Hash.generateHMAC(data, client.getHMACKey());
+                data = String.format("%s<<*3456*34636*>>%s",
+                        hMAC,
+                        data);
+            }
+
+            System.out.println("Write: " +
+                    socketChannel.write(charsetEncoder.encode(CharBuffer.wrap(data))));
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -153,7 +329,9 @@ public class Server implements Runnable
                     if(key.isReadable())
                     {
                         // Binnenkomende data
-                        this.handleRead(key);
+                        if (key.isValid() && key.channel() instanceof SocketChannel) {
+                            this.handleRead(key);
+                        }
                     }
                 }
             }

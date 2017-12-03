@@ -141,7 +141,7 @@ public class KeyManagement {
         return null;
     }
 
-    protected static String bytesToHex(byte[] bytes)
+    public static String bytesToHex(byte[] bytes)
     {
         char[] hexChars = new char[bytes.length * 2];
         for ( int j = 0; j < bytes.length; j++ ) {
@@ -152,7 +152,7 @@ public class KeyManagement {
         return new String(hexChars);
     }
 
-    protected static byte[] hexToBytes(String s)
+    public static byte[] hexToBytes(String s)
     {
         int len = s.length();
         byte[] data = new byte[len / 2];
@@ -163,7 +163,7 @@ public class KeyManagement {
         return data;
     }
 
-    protected static String bytesToString(byte[] bytes)
+    public static String bytesToString(byte[] bytes)
     {
         try {
             return new String(bytes, "UTF-8");
@@ -194,8 +194,10 @@ public class KeyManagement {
         String decryptedString = AES.decrypt(encryptedString, secretKey, ivParameterSpec);
 
         print("[AES] Sleutel: %s", Base64.getEncoder().encodeToString(secretKey.getEncoded()));
+        print("[AES] IV: %s", bytesToHex(ivParameterSpec.getIV()));
         print("[AES] Willekeurige tekst: %s", randomString);
-        print("[AES] Versleutelde tekst: %s", encryptedString);
+        print("[AES] Versleutelde tekst #1: %s", encryptedString);
+        print("[AES] Versleutelde tekst #2: %s", AES.encrypt(randomString, secretKey, ivParameterSpec));
         print("[AES] Ontsleutelde tekst: %s", decryptedString);
         print("[AES] AES test %s", decryptedString.equals(randomString) ? "geslaagd\n" : "niet geslaagd\n");
         aes = decryptedString.equals(randomString);

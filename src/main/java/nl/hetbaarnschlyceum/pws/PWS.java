@@ -1,9 +1,7 @@
 package nl.hetbaarnschlyceum.pws;
 
-import com.sun.org.apache.xpath.internal.operations.Mod;
 import nl.hetbaarnschlyceum.pws.crypto.ECDSA;
 import nl.hetbaarnschlyceum.pws.crypto.KeyManagement;
-import nl.hetbaarnschlyceum.pws.server.tc.TCServer;
 import org.apache.commons.cli.*;
 import org.apache.commons.lang3.StringUtils;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
@@ -31,14 +29,14 @@ public class PWS {
 
     public enum MessageIdentifier
     {
-        REQUEST("REQ", 2), // client -> server                 REQ<<->>request_id<<&>>request
-        REQUEST_RESULT("REQ_RSL", 2), // server -> client      REQ_RSL<<->>request_id<<&>>request_result
-        CONNECTED("CONN_ACK", 0), // client -> server          CONN_ACK
-        DH_START("DH_ST", 1), // server -> client              DH_ST<<->>public_server
-        DH_ACK("DH_ACK", 1), // client -> server               DH_ACK<<->>public_client
-        LOGIN("LGN", 0), // server -> client                   LGN
-        LOGIN_INFORMATION("LGN_INF", 2), // client -> server   LGN_INF<<->>username<<&>>password_hash
-        LOGIN_RESULT("LGN_RSL", 1), // server -> client        LGN_RSL<<->>login_result
+        REQUEST("REQ", 1), // client -> server                 REQ<<->>request_id<<&>>hmac<<&>>request
+        REQUEST_RESULT("REQ_RSL", 1), // server -> client      REQ_RSL<<->>request_id<<&>>hmac<<&>>request_result
+        CONNECTED("CONN_ACK", 0), // client -> server          CONN_ACK<<->>message_id<<&>>hmac
+        DH_START("DH_ST", 1), // server -> client              DH_ST<<->>message_id<<&>>hmac<<&>>public_server
+        DH_ACK("DH_ACK", 2), // client -> server               DH_ACK<<->>message_id<<&>>hmac<<&>>public_client<<&>>IV
+        LOGIN("LGN", 0), // server -> client                   LGN<<->>message_id<<&>>hmac
+        LOGIN_INFORMATION("LGN_INF", 2), // client -> server   LGN_INF<<->>message_id<<&>>hmac<<&>>username<<&>>password_hash
+        LOGIN_RESULT("LGN_RSL", 1), // server -> client        LGN_RSL<<->>message_id<<&>>hmac<<&>>login_result
         ;
 
         private String dataID;

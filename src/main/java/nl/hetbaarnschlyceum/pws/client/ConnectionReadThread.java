@@ -1,18 +1,20 @@
 package nl.hetbaarnschlyceum.pws.client;
 
-import java.io.DataInputStream;
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.net.Socket;
+import java.net.SocketException;
 
 import static nl.hetbaarnschlyceum.pws.PWS.print;
 
 public class ConnectionReadThread extends Thread
 {
-    private DataInputStream dataInputStream;
+    private BufferedReader bufferedReader;
     private Socket socket;
-    private ConnectionThread connectionThread;
+    ConnectionThread connectionThread;
 
-    public ConnectionReadThread(ConnectionThread connectionThread,
+    ConnectionReadThread(ConnectionThread connectionThread,
                                 Socket socket)
     {
         this.socket = socket;
@@ -26,7 +28,7 @@ public class ConnectionReadThread extends Thread
     {
         try
         {
-            dataInputStream = new DataInputStream(socket.getInputStream());
+            bufferedReader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
         } catch (IOException e)
         {
             print("[FOUT] Er kon geen InputStream van de server worden opgehaald");
@@ -35,13 +37,13 @@ public class ConnectionReadThread extends Thread
         }
     }
 
-    protected void closeConnection()
+    void closeConnection()
     {
-        if (dataInputStream != null)
+        if (bufferedReader != null)
         {
             try
             {
-                dataInputStream.close();
+                bufferedReader.close();
             } catch (IOException e)
             {
                 print("[FOUT] De InputStream kon niet worden gesloten");
@@ -52,15 +54,26 @@ public class ConnectionReadThread extends Thread
 
     @Override
     public void run() {
-        while (true)
+        while (connectionThread != null)
         {
             try
             {
-                connectionThread.processDataReceived(dataInputStream.readUTF());
+                StringBuffer sb = new StringBuffer();
+                while (bufferedReader.ready()) {
+                    char[] c = new char[] { 1024 };
+                    bufferedReader.read(c);
+                    sb.append(c);
+                }
+
+                connectionThread.processDataReceived(sb.toString());
+            } catch (SocketException e)
+            {
+                print("[FOUT] De verbinding met de server werd onverwacht verbroken");
+                connectionThread.closeConnection();
             } catch (IOException e)
             {
                 print("[FOUT] De InputStream kon niet worden afgelezen");
-                e.printStackTrace();
+                connectionThread.closeConnection();
             }
         }
     }

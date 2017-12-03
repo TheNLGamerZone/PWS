@@ -31,14 +31,17 @@ public class ClientManager {
         client.addFailedAttempt();
     }
 
-    /**
-     * Hiermee kan de client uitloggen
-     * @param client De client
-     * @return Een string met de AES-sleutels, zodat er nog een laatste bericht kan worden gestuurd
-     */
-    public SecretKey clientLogout(Client client)
+    public void clientConnectionDropped(Client client)
     {
-        print("[INFO] Gebruiker %s probeert uit te loggen..", client.getName());
+        clientLogout(client, true);
+    }
+
+    private SecretKey clientLogout(Client client,
+                                   boolean silent)
+    {
+        if (!silent) {
+            print("[INFO] Gebruiker %s probeert uit te loggen..", client.getName());
+        }
 
         if (this.loadedClients.contains(client))
         {
@@ -49,6 +52,16 @@ public class ClientManager {
         }
 
         return null;
+    }
+
+    /**
+     * Hiermee kan de client uitloggen
+     * @param client De client
+     * @return Een string met de AES-sleutels, zodat er nog een laatste bericht kan worden gestuurd
+     */
+    public SecretKey clientLogout(Client client)
+    {
+        return clientLogout(client, false);
     }
 
     public int clientLogin(Client client, String name, String hash)

@@ -1,48 +1,38 @@
 package nl.hetbaarnschlyceum.pws.client;
 
-import java.io.BufferedWriter;
-import java.io.IOException;
-import java.io.OutputStreamWriter;
-import java.net.Socket;
-import java.util.Scanner;
+import nl.hetbaarnschlyceum.pws.PWS;
+
+import static nl.hetbaarnschlyceum.pws.PWS.print;
 
 public class Client
 {
-    public static final String[] forbiddenStrings = new String[]{"&", "=", "_&2d"};
+    public static final String[] forbiddenStrings = new String[]{"&",
+            "=",
+            "_&2d",
+            "<<->>",
+            "<<&>>",
+            "<<*3456*34636*>>",
+            "HMAC_X8723784X"
+    };
+    private ConnectionThread connectionThread;
 
     public Client(String serverIP, String serverPort)
     {
-        print("Client wordt gestart..");
-        this.startConnection();
-    }
+        print("[INFO] Client wordt gestart..");
 
-    private void startConnection()
-    {
+        this.connectionThread = new ConnectionThread(serverIP, Integer.valueOf(serverPort));
+
         try {
-            Socket socket = new Socket("95.85.53.98", 9348);
-            BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
-            while(socket.isConnected()) {
-                //synchronized (socket) {
-                writeMessage(socket,writer);
-                //readServerMessage(socket);
-                //}
-            }
-        } catch (IOException e) {
+            Thread.sleep(1000);
+        } catch (InterruptedException e) {
             e.printStackTrace();
         }
-    }
 
-    public static void writeMessage(Socket socket, BufferedWriter writer) throws IOException {
-        Scanner scanner = new Scanner(System.in);
-        System.out.println("Enter message: ");
-        String output = scanner.nextLine();
-        writer.write(output);
-        writer.flush();
-        //writer.close();
-    }
-
-    private void print(String string)
-    {
-        System.out.printf("[Client] %s\n", string);
+        if (this.connectionThread.isConnected())
+        {
+            this.connectionThread.processedRequestFromServer(
+                    this.connectionThread.prepareMessage(PWS.MessageIdentifier.CONNECTED)
+            );
+        }
     }
 }
