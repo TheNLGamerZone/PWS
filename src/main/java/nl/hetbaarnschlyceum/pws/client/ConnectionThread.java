@@ -14,10 +14,7 @@ import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.net.Socket;
 import java.security.KeyPair;
-import java.util.ArrayList;
-import java.util.Base64;
-import java.util.HashMap;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingDeque;
 
@@ -170,52 +167,52 @@ public class ConnectionThread implements Runnable
         }
 
         stringBuffer.append(data);
+        data = stringBuffer.toString();
+        stringBuffer = new StringBuilder();
 
-        if (stringBuffer.toString().contains("_&2d"))
+        Object[] messageData = checkValidMessage(data);
+
+        if (messageData == null)
         {
-            data = stringBuffer.toString();
-            data = data.substring(0, data.length() - 4);
-            stringBuffer = new StringBuilder();
+            return;
+        }
 
-            print("[INFO] Data verwerken: %s", data);
+        print("[INFO] Data verwerken: %s", data);
 
-            Object[] messageData = checkValidMessage(data);
+        if (messageData[0] == PWS.MessageIdentifier.REQUEST_RESULT)
+        {
+            // Normaal verzoek
+        } else
+        {
+            // Verbinding maken met de server
+            PWS.MessageIdentifier messageIdentifier = (PWS.MessageIdentifier) messageData[0];
 
-            if (messageData == null)
+            if (messageIdentifier == PWS.MessageIdentifier.DH_START)
             {
-                return;
-            }
+                // Verwachte reactie: DH_ACK
+                KeyPair keyPair = ECDH.generateKeyPair();
+                String publicKeyClient = ECDH.getPublicData(keyPair);
+                String publicKeyServer = (String) messageData[1];
+                this.initializationVector = AES.generateIV();
+                String response = prepareMessage(PWS.MessageIdentifier.DH_ACK,
+                        publicKeyClient,
+                        KeyManagement.bytesToHex(this.initializationVector.getIV()));
 
-            if (messageData[0] == PWS.MessageIdentifier.REQUEST_RESULT)
+                byte[] sharedSecret = KeyManagement.hexToBytes(Hash.generateHash(ECDH.getSecret(keyPair, publicKeyServer)));
+                this.sessionKey = new SecretKeySpec(sharedSecret, 0,sharedSecret.length, "AES");
+
+                this.processedRequestFromServer(response);
+                this.hmacKey = Hash.generateHash(
+                        KeyManagement.bytesToHex(sharedSecret) +
+                        Base64.getEncoder().encodeToString(this.sessionKey.getEncoded())
+                );
+
+            } else if (messageIdentifier == PWS.MessageIdentifier.LOGIN)
             {
-                // Normaal verzoek
-            } else
+                // Verwachte reactie: LOGIN_INFORMATION
+            } else if (messageIdentifier == PWS.MessageIdentifier.LOGIN_RESULT)
             {
-                // Verbinding maken met de server
-                PWS.MessageIdentifier messageIdentifier = (PWS.MessageIdentifier) messageData[0];
-
-                if (messageIdentifier == PWS.MessageIdentifier.DH_START)
-                {
-                    // Verwachte reactie: DH_ACK
-                    KeyPair keyPair = ECDH.generateKeyPair();
-                    String publicKeyClient = ECDH.getPublicData(keyPair);
-                    String publicKeyServer = (String) messageData[1];
-                    this.initializationVector = AES.generateIV();
-                    String response = prepareMessage(PWS.MessageIdentifier.DH_ACK,
-                            publicKeyClient,
-                            KeyManagement.bytesToHex(this.initializationVector.getIV()));
-
-                    byte[] sharedSecret = KeyManagement.hexToBytes(Hash.generateHash(ECDH.getSecret(keyPair, publicKeyServer)));
-                    this.sessionKey = new SecretKeySpec(sharedSecret, 0,sharedSecret.length, "AES");
-
-                    this.processedRequestFromServer(response);
-                } else if (messageIdentifier == PWS.MessageIdentifier.LOGIN)
-                {
-                    // Verwachte reactie: LOGIN_INFORMATION
-                } else if (messageIdentifier == PWS.MessageIdentifier.LOGIN_RESULT)
-                {
-                    // Verwachte reactie: niks -> ingelogd
-                }
+                // Verwachte reactie: niks -> ingelogd
             }
         }
     }
@@ -233,20 +230,30 @@ public class ConnectionThread implements Runnable
                 stringBuilder.append("<<&>>").append(argument);
             }
 
-            String formattedMessage = String.format("%s<<->>%s<<&>>%s%s_&2d",
+            String formattedMessage = String.format("%s<<->>%s<<&>>%s<<&>>%s%s",
                     messageIdentifier.getDataID(),
                     UUID.randomUUID().toString(),
-                    "HMAC_X8723784X", //HMAC
+                    "HMAC_X8723784X", // HMAC
+                    "MSGCOUNT_X987231X", // Message count
                     stringBuilder.toString());
 
             String hMAC = "null";
-
-            if (sessionKey != null)
+            String messageCount = "null";
+            if (this.sessionKey != null &&
+                    this.hmacKey != null)
             {
-                hMAC = Hash.generateHMAC(formattedMessage, hmacKey);
+                hMAC = Hash.generateHMAC(formattedMessage, this.hmacKey);
+
+                if (this.messageCount != -1)
+                {
+                    this.messageCount += 2;
+                    messageCount = String.valueOf(this.messageCount);
+                }
             }
 
-            return formattedMessage.replace("HMAC_X8723784X", hMAC);
+            return formattedMessage
+                    .replace("HMAC_X8723784X", hMAC)
+                    .replace("MSGCOUNT_X987231X", messageCount);
         }
 
         return null;
@@ -254,6 +261,25 @@ public class ConnectionThread implements Runnable
 
     private Object[] checkValidMessage(String data)
     {
+        if (!data.contains("_&2d"))
+        {
+            return null;
+        }
+
+        data = data.substring(0, data.length() - 4);
+
+        // Controleren voor versleuteling ed
+        if (data.contains("<<*3456*34636*>>"))
+        {
+            if (data.split("<<*3456*34636*>>").length != 2)
+            {
+                return null;
+            }
+
+            String hmacTotal = data.split("<<*3456*34636*>>")[0];
+            String encryptedData = data.split("<<*3456*34636*>>")[1];
+        }
+
         if (data.split("<<->>").length != 2)
         {
             return null;
@@ -277,7 +303,7 @@ public class ConnectionThread implements Runnable
 
         String[] args = data.split("<<->>")[1].split("<<&>>");
 
-        if (messageIdentifier.getArguments() + 2 != args.length)
+        if (messageIdentifier.getArguments() + 3 != args.length)
         {
             return null;
         }
@@ -289,7 +315,7 @@ public class ConnectionThread implements Runnable
         {
             i++;
 
-            if (i < 3)
+            if (i < 4)
             {
                 continue;
             }
@@ -304,6 +330,7 @@ public class ConnectionThread implements Runnable
         for (String arg : arguments)
         {
             messageData[i] = arg;
+            i++;
         }
 
         return messageData;
@@ -323,13 +350,15 @@ public class ConnectionThread implements Runnable
                     if (sessionKey != null &&
                             hmacKey != null)
                     {
+                        request = AES.encrypt(request, this.sessionKey, this.initializationVector);
                         String hMAC = Hash.generateHMAC(request, hmacKey);
                         request = String.format("%s<<*3456*34636*>>%s",
                                 hMAC,
-                                request);
+                                request
+                        );
                     }
 
-                    bufferedWriter.write(request);
+                    bufferedWriter.write(request + "_&2d");
                     bufferedWriter.flush();
                 }
             } catch (IOException |

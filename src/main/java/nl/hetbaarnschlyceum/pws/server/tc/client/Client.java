@@ -173,16 +173,9 @@ public class Client {
         this.messageCount = start;
     }
 
-    public boolean messageReceived(long messageCount)
+    public long getMessageCount()
     {
-        // Controleren of dit bericht het juiste code heeft
-        if (messageCount == this.messageCount + 1)
-        {
-            this.messageCount += 2;
-            return true;
-        }
-
-        return false;
+        return this.messageCount;
     }
 
     public void addFailedAttempt()

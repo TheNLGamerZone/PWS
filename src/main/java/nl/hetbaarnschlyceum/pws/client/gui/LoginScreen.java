@@ -1,9 +1,6 @@
 package nl.hetbaarnschlyceum.pws.client.gui;
 import javafx.scene.Scene;
-import javafx.scene.control.Alert;
-import javafx.scene.control.Button;
-import javafx.scene.control.Label;
-import javafx.scene.control.TextField;
+import javafx.scene.control.*;
 import javafx.scene.layout.Pane;
 import javafx.stage.Stage;
 import nl.hetbaarnschlyceum.pws.client.Client;
@@ -20,7 +17,7 @@ public class LoginScreen {
         Alert foutmelding = new Alert(Alert.AlertType.ERROR);
         foutmelding.setContentText("De volgende karakters zijn niet toegestaan: " +
                 Arrays.toString(Client.forbiddenStrings));
-        TextField textfieldpassword = new TextField();
+        PasswordField textfieldpassword = new PasswordField();
         Label labelname = new Label("Naam:");
         Label labelpassword = new Label("Wachtwoord:");
         Label headerlabel = new Label("Inloggen");
@@ -36,8 +33,10 @@ public class LoginScreen {
             }
             else {
                 loginbutton.setDisable(true);
-                loginbutton.setText("Verbinding maken..");
                 registerbutton.setDisable(true);
+                textfieldname.setDisable(true);
+                textfieldpassword.setDisable(true);
+                loginbutton.setText("Verbinding maken..");
 
                 String name = textfieldname.getText();
                 String password = textfieldpassword.getText();
@@ -53,7 +52,10 @@ public class LoginScreen {
                     alert.show();
                     loginbutton.setDisable(false);
                     registerbutton.setDisable(false);
+                    textfieldname.setDisable(false);
+                    textfieldpassword.setDisable(false);
                     loginbutton.setText("Inloggen");
+
                 }
 
                 //MainScreen.showMainscreen(window, loginname[0]);

@@ -1,6 +1,7 @@
 package nl.hetbaarnschlyceum.pws.server;
 
 import nl.hetbaarnschlyceum.pws.PWS;
+import nl.hetbaarnschlyceum.pws.crypto.AES;
 import nl.hetbaarnschlyceum.pws.crypto.ECDH;
 import nl.hetbaarnschlyceum.pws.crypto.Hash;
 import nl.hetbaarnschlyceum.pws.crypto.KeyManagement;
@@ -21,10 +22,7 @@ import java.nio.channels.SocketChannel;
 import java.nio.charset.Charset;
 import java.nio.charset.CharsetEncoder;
 import java.security.KeyPair;
-import java.security.PublicKey;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.UUID;
+import java.util.*;
 
 import static nl.hetbaarnschlyceum.pws.PWS.print;
 
@@ -139,13 +137,11 @@ public class Server implements Runnable
 
     private void processData(Client client, String data)
     {
-        data = data.substring(0, data.length() - 4);
         print(" Data ontvangen: %s", data);
-
 
         try
         {
-            Object[] messageData = checkValidMessage(data);
+            Object[] messageData = checkValidMessage(client, data);
 
             if (messageData == null)
             {
@@ -167,13 +163,14 @@ public class Server implements Runnable
                     String publicKey = ECDH.getPublicData(keyPair);
                     String response = this.prepareMessage(client,
                             PWS.MessageIdentifier.DH_START,
-                            publicKey);
-
+                            publicKey
+                    );
                     client.setDHKeys(keyPair);
                     sendMessage(client, response);
                 } else if (messageIdentifier == PWS.MessageIdentifier.DH_ACK)
                 {
                     // Verwachte reactie: LOGIN
+                    int startCount = new Random().nextInt(329) + 23;
                     KeyPair keyPair = client.getDHKeys();
                     String publicKeyClient = (String) messageData[1];
                     byte[] sharedSecret = KeyManagement.hexToBytes(
@@ -182,15 +179,27 @@ public class Server implements Runnable
                             )
                     );
                     SecretKey secretKey = new SecretKeySpec(sharedSecret, 0,sharedSecret.length, "AES");
+                    IvParameterSpec ivParameterSpec = new IvParameterSpec(
+                        KeyManagement.hexToBytes(
+                                (String) messageData[2]
+                        )
+                    );
 
-                    client.setInitializationVector(
-                            new IvParameterSpec(
-                                    KeyManagement.hexToBytes(
-                                            (String) messageData[2]
-                                    )
+                    client.setInitializationVector(ivParameterSpec);
+                    client.setSessionKey(secretKey);
+                    client.setHMACKey(
+                            Hash.generateHash(
+                                    KeyManagement.bytesToHex(sharedSecret) +
+                                    Base64.getEncoder().encodeToString(client.getSessionKey().getEncoded())
                             )
                     );
-                    client.setSessionKey(secretKey);
+                    client.setMessageCount(startCount);
+
+                    String response = this.prepareMessage(client,
+                            PWS.MessageIdentifier.LOGIN,
+                            String.valueOf(startCount + 1));
+
+                    sendMessage(client, response);
                 } else if (messageIdentifier == PWS.MessageIdentifier.LOGIN_INFORMATION)
                 {
                     // Verwachte reactie: LOGIN_RESULT
@@ -217,28 +226,62 @@ public class Server implements Runnable
                 stringBuilder.append("<<&>>").append(argument);
             }
 
-            String formattedMessage = String.format("%s<<->>%s<<&>>%s%s_&2d",
+            String formattedMessage = String.format("%s<<->>%s<<&>>%s<<&>>%s%s",
                     messageIdentifier.getDataID(),
                     UUID.randomUUID().toString(),
-                    "HMAC_X8723784X", //HMAC
+                    "HMAC_X8723784X", // HMAC
+                    "MSGCOUNT_X987231X", // Message count
                     stringBuilder.toString());
 
             String hMAC = "null";
-
+            String messageCount = "null";
             if (client.getSessionKey() != null &&
                     client.getHMACKey() != null)
             {
                 hMAC = Hash.generateHMAC(formattedMessage, client.getHMACKey());
+
+                if (client.getMessageCount() != -1)
+                {
+                    client.setMessageCount(client.getMessageCount() + 2);
+                    messageCount = String.valueOf(client.getMessageCount());
+                }
             }
 
-            return formattedMessage.replace("HMAC_X8723784X", hMAC);
+            return formattedMessage
+                    .replace("HMAC_X8723784X", hMAC)
+                    .replace("MSGCOUNT_X987231X", messageCount);
         }
 
         return null;
     }
 
-    private Object[] checkValidMessage(String data)
+    private Object[] checkValidMessage(Client client, String data)
     {
+        if (!data.contains("_&2d"))
+        {
+            return null;
+        }
+
+        data = data.substring(0, data.length() - 4);
+
+        // Controleren voor versleuteling ed
+        if (data.contains("<<*3456*34636*>>"))
+        {
+            if (data.split("<<*3456*34636*>>").length != 2)
+            {
+                return null;
+            }
+
+            String hmacTotal = data.split("<<*3456*34636*>>")[0];
+            String encryptedData = data.split("<<*3456*34636*>>")[1];
+
+            if (!Hash.generateHMAC(encryptedData, client.getHMACKey()).equals(hmacTotal))
+            {
+                //TODO: Nog laten weten dat het hier fout ging voor debug
+                return null;
+            }
+        }
+
         if (data.split("<<->>").length != 2)
         {
             return null;
@@ -262,7 +305,7 @@ public class Server implements Runnable
 
         String[] args = data.split("<<->>")[1].split("<<&>>");
 
-        if (messageIdentifier.getArguments() + 2 != args.length)
+        if (messageIdentifier.getArguments() + 3 != args.length)
         {
             return null;
         }
@@ -274,7 +317,7 @@ public class Server implements Runnable
         {
             i++;
 
-            if (i < 3)
+            if (i < 4)
             {
                 continue;
             }
@@ -289,6 +332,7 @@ public class Server implements Runnable
         for (String arg : arguments)
         {
             messageData[i] = arg;
+            i++;
         }
 
         return messageData;
@@ -307,19 +351,21 @@ public class Server implements Runnable
 
     private static void sendMessage(Client client, SocketChannel socketChannel, String data)
     {
-        print(" Bericht naar %s sturen: %s", socketChannel.toString(), data);
-
         try {
-            if (client.getSessionKey() != null)
+            print(" Bericht naar %s sturen: %s", socketChannel.getRemoteAddress().toString(), data);
+
+            if (client.getSessionKey() != null
+                    && client.getHMACKey() != null)
             {
+                data = AES.encrypt(data, client.getSessionKey(), client.getInitializationVector());
                 String hMAC = Hash.generateHMAC(data, client.getHMACKey());
                 data = String.format("%s<<*3456*34636*>>%s",
                         hMAC,
-                        data);
+                        data
+                );
             }
 
-            System.out.println("Write: " +
-                    socketChannel.write(charsetEncoder.encode(CharBuffer.wrap(data))));
+            socketChannel.write(charsetEncoder.encode(CharBuffer.wrap(data + "_&2d")));
         } catch (IOException e) {
             e.printStackTrace();
         }

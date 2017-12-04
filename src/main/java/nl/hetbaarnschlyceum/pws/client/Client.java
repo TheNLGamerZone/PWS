@@ -13,7 +13,8 @@ public class Client
             "<<->>",
             "<<&>>",
             "<<*3456*34636*>>",
-            "HMAC_X8723784X"
+            "HMAC_X8723784X",
+            "MSGCOUNT_X987231X"
     };
     private static ConnectionThread connectionThread;
     private static String serverIP;
