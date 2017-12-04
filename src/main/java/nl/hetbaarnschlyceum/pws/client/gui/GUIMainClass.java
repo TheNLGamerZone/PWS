@@ -5,8 +5,10 @@ import javafx.stage.Stage;
 
 public class GUIMainClass extends Application  {
     Stage window;
-    public static void main(String[] args){
-        launch(args);
+
+    public static void start()
+    {
+        launch();
     }
 
     @Override

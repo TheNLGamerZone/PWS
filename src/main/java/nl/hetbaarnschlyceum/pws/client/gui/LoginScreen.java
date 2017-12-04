@@ -28,9 +28,6 @@ public class LoginScreen {
         Alert notRegistered = new Alert(Alert.AlertType.INFORMATION);
         notRegistered.setContentText("Inloggen vanwege BETA");
 
-
-        final String[] loginname = new String[1];
-        final String[] loginpassword = new String[1];
         loginbutton.setOnAction(event -> {
             if(Arrays.stream(Client.forbiddenStrings).parallel().anyMatch(textfieldname.getText()::contains))
             {
@@ -38,9 +35,28 @@ public class LoginScreen {
                 foutmelding.show();
             }
             else {
-                loginname[0] = textfieldname.getText();
-                loginpassword[0] = textfieldpassword.getText();
-                MainScreen.showMainscreen(window, loginname[0]);
+                loginbutton.setDisable(true);
+                loginbutton.setText("Verbinding maken..");
+                registerbutton.setDisable(true);
+
+                String name = textfieldname.getText();
+                String password = textfieldpassword.getText();
+
+                if (Client.initConnection(name, password))
+                {
+                    // Verbinding kon worden gemaakt
+                } else
+                {
+                    Alert alert = new Alert(Alert.AlertType.ERROR);
+
+                    alert.setContentText("Kon niet verbinden met de server");
+                    alert.show();
+                    loginbutton.setDisable(false);
+                    registerbutton.setDisable(false);
+                    loginbutton.setText("Inloggen");
+                }
+
+                //MainScreen.showMainscreen(window, loginname[0]);
             }
         });
         registerbutton.setOnAction(e -> RegisterScreen.showRegisterscreen(window));

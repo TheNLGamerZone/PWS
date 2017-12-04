@@ -3,9 +3,13 @@ package nl.hetbaarnschlyceum.pws.server;
 import nl.hetbaarnschlyceum.pws.PWS;
 import nl.hetbaarnschlyceum.pws.crypto.ECDH;
 import nl.hetbaarnschlyceum.pws.crypto.Hash;
+import nl.hetbaarnschlyceum.pws.crypto.KeyManagement;
 import nl.hetbaarnschlyceum.pws.server.tc.TCServer;
 import nl.hetbaarnschlyceum.pws.server.tc.client.Client;
 
+import javax.crypto.SecretKey;
+import javax.crypto.spec.IvParameterSpec;
+import javax.crypto.spec.SecretKeySpec;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
@@ -170,6 +174,23 @@ public class Server implements Runnable
                 } else if (messageIdentifier == PWS.MessageIdentifier.DH_ACK)
                 {
                     // Verwachte reactie: LOGIN
+                    KeyPair keyPair = client.getDHKeys();
+                    String publicKeyClient = (String) messageData[1];
+                    byte[] sharedSecret = KeyManagement.hexToBytes(
+                            Hash.generateHash(
+                                    ECDH.getSecret(keyPair, publicKeyClient)
+                            )
+                    );
+                    SecretKey secretKey = new SecretKeySpec(sharedSecret, 0,sharedSecret.length, "AES");
+
+                    client.setInitializationVector(
+                            new IvParameterSpec(
+                                    KeyManagement.hexToBytes(
+                                            (String) messageData[2]
+                                    )
+                            )
+                    );
+                    client.setSessionKey(secretKey);
                 } else if (messageIdentifier == PWS.MessageIdentifier.LOGIN_INFORMATION)
                 {
                     // Verwachte reactie: LOGIN_RESULT

@@ -186,7 +186,7 @@ public class ConnectionThread implements Runnable
                 return;
             }
 
-            if (messageData[0] == PWS.MessageIdentifier.REQUEST)
+            if (messageData[0] == PWS.MessageIdentifier.REQUEST_RESULT)
             {
                 // Normaal verzoek
             } else
