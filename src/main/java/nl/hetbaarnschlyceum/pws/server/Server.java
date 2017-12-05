@@ -197,7 +197,7 @@ public class Server implements Runnable
 
                     String response = this.prepareMessage(client,
                             PWS.MessageIdentifier.LOGIN,
-                            String.valueOf(startCount + 1));
+                            String.valueOf(startCount));
 
                     sendMessage(client, response);
                 } else if (messageIdentifier == PWS.MessageIdentifier.LOGIN_INFORMATION)
@@ -242,8 +242,7 @@ public class Server implements Runnable
 
                 if (client.getMessageCount() != -1)
                 {
-                    client.setMessageCount(client.getMessageCount() + 2);
-                    messageCount = String.valueOf(client.getMessageCount());
+                    messageCount = String.valueOf(client.getMessageCount() - 1);
                 }
             }
 
@@ -255,6 +254,7 @@ public class Server implements Runnable
         return null;
     }
 
+    //TODO: Message count kloppend maken
     private Object[] checkValidMessage(Client client, String data)
     {
         if (!data.contains("_&2d"))
@@ -277,9 +277,48 @@ public class Server implements Runnable
 
             if (!Hash.generateHMAC(encryptedData, client.getHMACKey()).equals(hmacTotal))
             {
-                //TODO: Nog laten weten dat het hier fout ging voor debug
+                System.out.println("HMAC #1 was niet goed");
                 return null;
             }
+
+            String decryptedData = AES.decrypt(encryptedData,
+                    client.getSessionKey(),
+                    client.getInitializationVector()
+            );
+
+            if (decryptedData.contains("<<&>>"))
+            {
+                System.out.println("Decryptie ging niet goed: " + decryptedData);
+                return null;
+            }
+
+            String hmacData = decryptedData.split("<<&>>")[1];
+            String rawData = decryptedData.replace(hmacData, "null");
+
+            if (!Hash.generateHMAC(rawData, client.getHMACKey()).equals(hmacData))
+            {
+                System.out.println("HMAC #2 was niet goed");
+                return null;
+            }
+
+            data = rawData;
+
+            if (data.split("<<&>>").length < 3)
+            {
+                System.out.println("Te weinig argumenten: " + data);
+                return null;
+            }
+
+            int messageCount = Integer.valueOf(data.split("<<&>>")[2]);
+
+            if (messageCount != client.getMessageCount())
+            {
+                System.out.println("Verkeerde messageCount. Vereist: " + client.getMessageCount()
+                + ", gevonden: " + (messageCount + 1));
+                return null;
+            }
+
+            client.setMessageCount(client.getMessageCount() + 2);
         }
 
         if (data.split("<<->>").length != 2)

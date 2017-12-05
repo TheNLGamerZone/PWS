@@ -210,6 +210,7 @@ public class ConnectionThread implements Runnable
             } else if (messageIdentifier == PWS.MessageIdentifier.LOGIN)
             {
                 // Verwachte reactie: LOGIN_INFORMATION
+                int startMessageCount = Integer.valueOf((String) messageData[1]);
             } else if (messageIdentifier == PWS.MessageIdentifier.LOGIN_RESULT)
             {
                 // Verwachte reactie: niks -> ingelogd
@@ -246,8 +247,7 @@ public class ConnectionThread implements Runnable
 
                 if (this.messageCount != -1)
                 {
-                    this.messageCount += 2;
-                    messageCount = String.valueOf(this.messageCount);
+                    messageCount = String.valueOf(this.messageCount - 1);
                 }
             }
 
@@ -278,6 +278,51 @@ public class ConnectionThread implements Runnable
 
             String hmacTotal = data.split("<<*3456*34636*>>")[0];
             String encryptedData = data.split("<<*3456*34636*>>")[1];
+
+            if (!Hash.generateHMAC(encryptedData, this.hmacKey).equals(hmacTotal))
+            {
+                System.out.println("HMAC #1 was niet goed");
+                return null;
+            }
+
+            String decryptedData = AES.decrypt(encryptedData,
+                    this.sessionKey,
+                    this.initializationVector
+            );
+
+            if (decryptedData.contains("<<&>>"))
+            {
+                System.out.println("Decryptie ging niet goed: " + decryptedData);
+                return null;
+            }
+
+            String hmacData = decryptedData.split("<<&>>")[1];
+            String rawData = decryptedData.replace(hmacData, "null");
+
+            if (!Hash.generateHMAC(rawData, this.hmacKey).equals(hmacData))
+            {
+                System.out.println("HMAC #2 was niet goed");
+                return null;
+            }
+
+            data = rawData;
+
+            if (data.split("<<&>>").length < 3)
+            {
+                System.out.println("Te weinig argumenten: " + data);
+                return null;
+            }
+
+            int messageCount = Integer.valueOf(data.split("<<&>>")[2]);
+
+            if (messageCount != this.messageCount)
+            {
+                System.out.println("Verkeerde messageCount. Vereist: " + this.messageCount
+                        + ", gevonden: " + messageCount);
+                return null;
+            }
+
+            this.messageCount += 2;
         }
 
         if (data.split("<<->>").length != 2)

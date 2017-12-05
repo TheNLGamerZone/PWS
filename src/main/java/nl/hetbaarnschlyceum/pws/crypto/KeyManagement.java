@@ -40,7 +40,7 @@ public class KeyManagement {
 
             // Controleren of de server de juiste prive sleutel geladen heeft
             if (PWS.currentMode == PWS.Modes.TC_SERVER
-                    || PWS.currentMode == PWS.Modes.CRYPTOTEST)
+                    && PWS.currentMode == PWS.Modes.CRYPTOTEST)
             {
                 String testSignature = ECDSA.createSignature("testMessage");
                 boolean signatureCheck = ECDSA.verifySignature("testMessage", testSignature);
