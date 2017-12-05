@@ -6,12 +6,12 @@ import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
+import nl.hetbaarnschlyceum.pws.client.Client;
 import nl.hetbaarnschlyceum.pws.client.gui.call.CallScreen;
 
 
 public class MainScreen {
-    public static Scene showMainscreen(Stage window,
-                                       String userName){
+    public static Scene showMainscreen(Stage window){
         //linkerdeel vh hoofdscherm
         Label labelcontacts = new Label("Contacten");
         TextField tfsearchuser = new TextField();
@@ -30,7 +30,7 @@ public class MainScreen {
         buttoncallup.setOnAction(e ->  CallScreen.showCallscreen(window));
 
         //rechterdeel vh hoofdscherm
-        Label labelloggedin = new Label("Ingelogd als " + userName );
+        Label labelloggedin = new Label("Ingelogd als " + Client.username);
         Button buttonsettings = new Button(" Instellingen");
         Button buttonlogout = new Button("Uitloggen");
         Label labelcallnumber = new Label("Nummer Bellen");
@@ -52,7 +52,7 @@ public class MainScreen {
         String call1 = "Tim Anema 12345";
         String nocall = "Geen";
         boolean call = true;
-        if(call == true){
+        if(call){
             lvincomingcalls.getItems().addAll(call1);
         }
         else{
@@ -74,7 +74,6 @@ public class MainScreen {
         borderpane.setLeft(linksmenu);
         borderpane.setRight(rechtsmenu);
         Scene mainscreen = new Scene(borderpane,800,500);
-        window.setTitle("Hoofdscherm");
         window.setScene(mainscreen);
         window.show();
 

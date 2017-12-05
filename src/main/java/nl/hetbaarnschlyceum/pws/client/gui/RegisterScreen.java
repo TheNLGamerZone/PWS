@@ -86,7 +86,6 @@ public class RegisterScreen {
         Pane layoutregisterscreen = new Pane();
         layoutregisterscreen.getChildren().addAll(registerbutton,buttontoinlog,tfname,tfnumber,tfpassword,tfpassword2,labelname,labelpassword2,labelpassword,headerlabel,labelnr);
         Scene registerscreen = new Scene(layoutregisterscreen,800, 500);
-        window.setTitle("Registreren");
         window.setScene(registerscreen);
         window.show();
         return registerscreen;

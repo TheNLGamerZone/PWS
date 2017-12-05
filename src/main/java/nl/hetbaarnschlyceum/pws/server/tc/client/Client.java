@@ -25,7 +25,7 @@ public class Client {
     private ArrayList<String> failedAttempts;
     private String IP;
     private KeyPair dhKeys;
-    private long messageCount;
+    private long lastMessageReceived;
 
     private SocketChannel socketChannel;
     public ByteBuffer byteBuffer;
@@ -168,14 +168,14 @@ public class Client {
         return dhKeys;
     }
 
-    public void setMessageCount(long start)
+    public void setLastMessageReceivedTime(long start)
     {
-        this.messageCount = start;
+        this.lastMessageReceived = start;
     }
 
-    public long getMessageCount()
+    public long getLastMessageReceivedTime()
     {
-        return this.messageCount;
+        return this.lastMessageReceived;
     }
 
     public void addFailedAttempt()

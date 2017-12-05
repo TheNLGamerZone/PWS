@@ -1,10 +1,16 @@
 package nl.hetbaarnschlyceum.pws.client;
 
+import javafx.application.Platform;
+import javafx.scene.control.Alert;
 import nl.hetbaarnschlyceum.pws.PWS;
+import nl.hetbaarnschlyceum.pws.client.gui.GUIMainClass;
+import nl.hetbaarnschlyceum.pws.client.gui.LoginScreen;
+import nl.hetbaarnschlyceum.pws.client.gui.MainScreen;
 import nl.hetbaarnschlyceum.pws.crypto.AES;
 import nl.hetbaarnschlyceum.pws.crypto.ECDH;
 import nl.hetbaarnschlyceum.pws.crypto.Hash;
 import nl.hetbaarnschlyceum.pws.crypto.KeyManagement;
+import nl.hetbaarnschlyceum.pws.server.tc.OperationResult;
 
 import javax.crypto.SecretKey;
 import javax.crypto.spec.IvParameterSpec;
@@ -22,18 +28,19 @@ import static nl.hetbaarnschlyceum.pws.PWS.print;
 
 public class ConnectionThread implements Runnable
 {
-    private Socket socket;
-    private BufferedWriter bufferedWriter;
-    private Thread thread;
-    private BlockingQueue<String> blockingQueue;
-    private HashMap<String, String> resultList;
-    private ConnectionReadThread readThread;
-    private StringBuilder stringBuffer;
+    private static Socket socket;
+    private static BufferedWriter bufferedWriter;
+    private static Thread thread;
+    private static BlockingQueue<String> blockingQueue;
+    private static HashMap<String, String> resultList;
+    private static ConnectionReadThread readThread;
+    private static StringBuilder stringBuffer;
 
-    private long messageCount;
-    private SecretKey sessionKey;
-    private IvParameterSpec initializationVector;
-    private String hmacKey;
+    private static long lastMessageReceived;
+    private static SecretKey sessionKey;
+    private static IvParameterSpec initializationVector;
+    private static String hmacKey;
+    private static boolean dhParamsReady = false;
 
     public ConnectionThread(String serverIP, int port)
     {
@@ -117,15 +124,15 @@ public class ConnectionThread implements Runnable
 
     public String requestFromServer(String request)
     {
-        return this.requestFromServer(request, false, true);
+        return requestFromServer(request, false, true);
     }
 
-    public void processedRequestFromServer(String processedRequest)
+    public static void processedRequestFromServer(String processedRequest)
     {
-        this.requestFromServer(processedRequest, true, false);
+        requestFromServer(processedRequest, true, false);
     }
 
-    private String requestFromServer(String request,
+    private static String requestFromServer(String request,
                                      boolean processed,
                                      boolean blocking)
     {
@@ -170,14 +177,14 @@ public class ConnectionThread implements Runnable
         data = stringBuffer.toString();
         stringBuffer = new StringBuilder();
 
+        print("[INFO] Data ontvangen: %s", data);
+
         Object[] messageData = checkValidMessage(data);
 
         if (messageData == null)
         {
             return;
         }
-
-        print("[INFO] Data verwerken: %s", data);
 
         if (messageData[0] == PWS.MessageIdentifier.REQUEST_RESULT)
         {
@@ -193,33 +200,58 @@ public class ConnectionThread implements Runnable
                 KeyPair keyPair = ECDH.generateKeyPair();
                 String publicKeyClient = ECDH.getPublicData(keyPair);
                 String publicKeyServer = (String) messageData[1];
-                this.initializationVector = AES.generateIV();
+                initializationVector = AES.generateIV();
                 String response = prepareMessage(PWS.MessageIdentifier.DH_ACK,
                         publicKeyClient,
-                        KeyManagement.bytesToHex(this.initializationVector.getIV()));
+                        KeyManagement.bytesToHex(initializationVector.getIV()));
 
                 byte[] sharedSecret = KeyManagement.hexToBytes(Hash.generateHash(ECDH.getSecret(keyPair, publicKeyServer)));
-                this.sessionKey = new SecretKeySpec(sharedSecret, 0,sharedSecret.length, "AES");
+                sessionKey = new SecretKeySpec(sharedSecret, 0,sharedSecret.length, "AES");
+                dhParamsReady = true;
 
-                this.processedRequestFromServer(response);
-                this.hmacKey = Hash.generateHash(
-                        KeyManagement.bytesToHex(sharedSecret) +
-                        Base64.getEncoder().encodeToString(this.sessionKey.getEncoded())
-                );
-
+                processedRequestFromServer(response);
             } else if (messageIdentifier == PWS.MessageIdentifier.LOGIN)
             {
                 // Verwachte reactie: LOGIN_INFORMATION
-                int startMessageCount = Integer.valueOf((String) messageData[1]);
+                String response = prepareMessage(PWS.MessageIdentifier.LOGIN_INFORMATION,
+                        Client.username,
+                        Client.hashedPassword,
+                        String.valueOf(Client.registerUser), // Niet registreren maar inloggen
+                        (Client.registerUser) ? String.valueOf(Client.registerNumber) : "0"
+                );
+                Client.connectionEstablished = true;
+
+                processedRequestFromServer(response);
             } else if (messageIdentifier == PWS.MessageIdentifier.LOGIN_RESULT)
             {
                 // Verwachte reactie: niks -> ingelogd
+                int loginResult = Integer.valueOf((String) messageData[1]);
+
+                if (loginResult == OperationResult.SUCCESS_LOGGED_IN)
+                {
+                    // Gebruiker is ingelogd -> naar MainScreen
+
+                    Platform.runLater(() -> MainScreen.showMainscreen(GUIMainClass.window));
+                } else
+                {
+                    String connectionType = (Client.registerUser) ? "registreren" : "inloggen";
+
+                    Platform.runLater(() -> {
+                        Alert alert = new Alert(Alert.AlertType.ERROR);
+
+                        alert.setContentText("Bij het " + connectionType + " is de volgende fout opgetreden: " +
+                                OperationResult.errorMessages[loginResult]
+                        );
+                        alert.show();
+                        LoginScreen.toggleControls();
+                    });
+                }
             }
         }
     }
 
     //TODO: AES enzo toevoegen
-    String prepareMessage(PWS.MessageIdentifier messageIdentifier,
+    static String prepareMessage(PWS.MessageIdentifier messageIdentifier,
                                 String... arguments)
     {
         if (arguments.length == messageIdentifier.getArguments())
@@ -239,21 +271,13 @@ public class ConnectionThread implements Runnable
                     stringBuilder.toString());
 
             String hMAC = "null";
-            String messageCount = "null";
-            if (this.sessionKey != null &&
-                    this.hmacKey != null)
+            if (sessionKey != null &&
+                    hmacKey != null)
             {
-                hMAC = Hash.generateHMAC(formattedMessage, this.hmacKey);
-
-                if (this.messageCount != -1)
-                {
-                    messageCount = String.valueOf(this.messageCount - 1);
-                }
+                hMAC = Hash.generateHMAC(formattedMessage, hmacKey);
             }
 
-            return formattedMessage
-                    .replace("HMAC_X8723784X", hMAC)
-                    .replace("MSGCOUNT_X987231X", messageCount);
+            return formattedMessage.replace("HMAC_X8723784X", hMAC);
         }
 
         return null;
@@ -271,62 +295,83 @@ public class ConnectionThread implements Runnable
         // Controleren voor versleuteling ed
         if (data.contains("<<*3456*34636*>>"))
         {
-            if (data.split("<<*3456*34636*>>").length != 2)
+            if (data.split("<<\\*3456\\*34636\\*>>").length != 2)
             {
+                System.out.println("Wel versleuteling, maar niet genoeg argumenten");
                 return null;
             }
 
-            String hmacTotal = data.split("<<*3456*34636*>>")[0];
-            String encryptedData = data.split("<<*3456*34636*>>")[1];
+            String hmacTotal = data.split("<<\\*3456\\*34636\\*>>")[0];
+            String encryptedData = data.split("<<\\*3456\\*34636\\*>>")[1];
 
-            if (!Hash.generateHMAC(encryptedData, this.hmacKey).equals(hmacTotal))
+            if (!Hash.generateHMAC(encryptedData, hmacKey).equals(hmacTotal))
             {
                 System.out.println("HMAC #1 was niet goed");
                 return null;
             }
 
             String decryptedData = AES.decrypt(encryptedData,
-                    this.sessionKey,
-                    this.initializationVector
+                    sessionKey,
+                    initializationVector
             );
 
-            if (decryptedData.contains("<<&>>"))
+            if (!decryptedData.contains("<<&>>")
+                    || !decryptedData.contains("<<->>"))
             {
                 System.out.println("Decryptie ging niet goed: " + decryptedData);
                 return null;
             }
 
-            String hmacData = decryptedData.split("<<&>>")[1];
-            String rawData = decryptedData.replace(hmacData, "null");
+            System.out.println("DATA: " + decryptedData);
+            if (decryptedData.split("<<&>>").length < 3)
+            {
+                System.out.println("Te weinig argumenten: " + decryptedData);
+                return null;
+            }
 
-            if (!Hash.generateHMAC(rawData, this.hmacKey).equals(hmacData))
+            long timeSend = Long.valueOf(decryptedData.split("<<&>>")[2]);
+            String hmacData = decryptedData.split("<<&>>")[1];
+            String rawData = decryptedData
+                    .replace(hmacData, "HMAC_X8723784X")
+                    .replace(String.valueOf(timeSend), "MSGCOUNT_X987231X"); //TODO: VOOR DISCUSSIE -> dit is eigenlijk niet veilig omdat tijd niet onder hmac valt
+
+            data = rawData;
+
+            if (!Hash.generateHMAC(rawData, hmacKey).equals(hmacData))
             {
                 System.out.println("HMAC #2 was niet goed");
                 return null;
             }
 
-            data = rawData;
-
-            if (data.split("<<&>>").length < 3)
+            // Eerste waarde zetten als dit eerste versleutelde bericht is
+            if (data.split("<<->>")[0].equals(PWS.MessageIdentifier.LOGIN.getDataID()))
             {
-                System.out.println("Te weinig argumenten: " + data);
+                lastMessageReceived = System.currentTimeMillis() - 20 * 1000;
+            }
+
+            if (timeSend < lastMessageReceived ||
+                    System.currentTimeMillis() - timeSend > 10 * 1000 ||
+                    System.currentTimeMillis() - timeSend < 1)
+            {
+                System.out.println("Verkeerde lastMessageReceived. Vereist: " + lastMessageReceived
+                        + ", gevonden: " + timeSend);
+
+                if (System.currentTimeMillis() - timeSend > 10 * 1000 ||
+                        System.currentTimeMillis() - timeSend < 1)
+                {
+                    System.out.println("Verschil te groot");
+                }
+
                 return null;
             }
 
-            int messageCount = Integer.valueOf(data.split("<<&>>")[2]);
-
-            if (messageCount != this.messageCount)
-            {
-                System.out.println("Verkeerde messageCount. Vereist: " + this.messageCount
-                        + ", gevonden: " + messageCount);
-                return null;
-            }
-
-            this.messageCount += 2;
+            lastMessageReceived = timeSend;
         }
 
+        print("[INFO] Data verwerken: %s", data);
         if (data.split("<<->>").length != 2)
         {
+            System.out.println("Geen versleuteling (meer), maar niet genoeg argumenten");
             return null;
         }
 
@@ -343,6 +388,7 @@ public class ConnectionThread implements Runnable
 
         if (messageIdentifier == null)
         {
+            System.out.println("Geen MID");
             return null;
         }
 
@@ -350,6 +396,7 @@ public class ConnectionThread implements Runnable
 
         if (messageIdentifier.getArguments() + 3 != args.length)
         {
+            System.out.println("Te veel argumenten");
             return null;
         }
 
@@ -388,20 +435,30 @@ public class ConnectionThread implements Runnable
             try
             {
                 if (bufferedWriter != null) {
-                    String request = blockingQueue.take();
-
-                    print("[INFO] Request verstuurd: %s", request);
+                    String request = blockingQueue.take()
+                            .replace("MSGCOUNT_X987231X", String.valueOf(System.currentTimeMillis()));
 
                     if (sessionKey != null &&
                             hmacKey != null)
                     {
-                        request = AES.encrypt(request, this.sessionKey, this.initializationVector);
+                        request = AES.encrypt(request, sessionKey, initializationVector);
                         String hMAC = Hash.generateHMAC(request, hmacKey);
                         request = String.format("%s<<*3456*34636*>>%s",
                                 hMAC,
                                 request
                         );
                     }
+
+                    if (dhParamsReady)
+                    {
+                        hmacKey = Hash.generateHash(
+                                        Base64.getEncoder().encodeToString(sessionKey.getEncoded())
+                        );
+                        dhParamsReady = false;
+                    }
+
+                    print("[INFO] Request v" +
+                            "erstuurd: %s", request);
 
                     bufferedWriter.write(request + "_&2d");
                     bufferedWriter.flush();

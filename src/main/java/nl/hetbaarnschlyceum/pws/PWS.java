@@ -29,14 +29,14 @@ public class PWS {
 
     public enum MessageIdentifier
     {
-        REQUEST("REQ", 1), // client -> server                 REQ<<->>request_id<<&>>hmac<<&>>message_count<<&>>request
-        REQUEST_RESULT("REQ_RSL", 1), // server -> client      REQ_RSL<<->>request_id<<&>>hmac<<&>>message_count<<&>>request_result
-        CONNECTED("CONN_ACK", 0), // client -> server          CONN_ACK<<->>message_id<<&>>hmac<<&>>message_count
-        DH_START("DH_ST", 1), // server -> client              DH_ST<<->>message_id<<&>>hmac<<&>>message_count<<&>>public_server
-        DH_ACK("DH_ACK", 2), // client -> server               DH_ACK<<->>message_id<<&>>hmac<<&>>message_count<<&>>public_client<<&>>IV
-        LOGIN("LGN", 1), // server -> client                   LGN<<->>message_id<<&>>hmac<<&>>message_count<<&>>start_count
-        LOGIN_INFORMATION("LGN_INF", 2), // client -> server   LGN_INF<<->>message_id<<&>>hmac<<&>>message_count<<&>>username<<&>>password_hash
-        LOGIN_RESULT("LGN_RSL", 1), // server -> client        LGN_RSL<<->>message_id<<&>>hmac<<&>>message_count<<&>>login_result
+        REQUEST("REQ", 1), // client -> server                 REQ<<->>request_id<<&>>hmac<<&>>message_time<<&>>request
+        REQUEST_RESULT("REQ_RSL", 1), // server -> client      REQ_RSL<<->>request_id<<&>>hmac<<&>>message_time<<&>>request_result
+        CONNECTED("CONN_ACK", 0), // client -> server          CONN_ACK<<->>message_id<<&>>hmac<<&>>message_time
+        DH_START("DH_ST", 1), // server -> client              DH_ST<<->>message_id<<&>>hmac<<&>>message_time<<&>>public_server
+        DH_ACK("DH_ACK", 2), // client -> server               DH_ACK<<->>message_id<<&>>hmac<<&>>message_time<<&>>public_client<<&>>IV
+        LOGIN("LGN", 0), // server -> client                   LGN<<->>message_id<<&>>hmac<<&>>message_time
+        LOGIN_INFORMATION("LGN_INF", 4), // client -> server   LGN_INF<<->>message_id<<&>>hmac<<&>>message_time<<&>>username<<&>>password_hash<<&>>new_user<<&>>number_if_new
+        LOGIN_RESULT("LGN_RSL", 1), // server -> client        LGN_RSL<<->>message_id<<&>>hmac<<&>>message_time<<&>>login_result
         ;
 
         private String dataID;

@@ -1,5 +1,7 @@
 package nl.hetbaarnschlyceum.pws.server.tc.client;
 
+import nl.hetbaarnschlyceum.pws.PWS;
+import nl.hetbaarnschlyceum.pws.server.Server;
 import nl.hetbaarnschlyceum.pws.server.tc.OperationResult;
 import nl.hetbaarnschlyceum.pws.server.tc.TCServer;
 
@@ -64,6 +66,56 @@ public class ClientManager {
         return clientLogout(client, false);
     }
 
+    public void loginTask(Client client, String name, String hash)
+    {
+        String response = Server.prepareMessage(client,
+                PWS.MessageIdentifier.LOGIN_RESULT,
+                String.valueOf(OperationResult.FAILED_SYS_ERROR)
+        );
+
+        try
+        {
+            int loginResult = clientLogin(client, name, hash);
+            response = Server.prepareMessage(client,
+                    PWS.MessageIdentifier.LOGIN_RESULT,
+                    String.valueOf(loginResult)
+            );
+        } catch (SQLException e) {
+            print("[FOUT] Er is iets mis gegaan bij het inloggen van gebruiker %s: %s",
+                    name,
+                    e.getMessage()
+            );
+        }
+
+        Server.sendMessage(client, response);
+    }
+
+    public void registerTask(Client client,
+                             String name,
+                             int number,
+                             String hash)
+    {
+        String response = Server.prepareMessage(client,
+                PWS.MessageIdentifier.LOGIN_RESULT,
+                String.valueOf(OperationResult.FAILED_SYS_ERROR)
+        );
+
+        try {
+            int registerResult = registerClient(client, name, number, hash);
+            response = Server.prepareMessage(client,
+                    PWS.MessageIdentifier.LOGIN_RESULT,
+                    String.valueOf(registerResult)
+            );
+        } catch (SQLException e) {
+            print("[FOUT] Er is iets mis gegaan bij het registreren van gebruiker %s: %s",
+                    name,
+                    e.getMessage()
+            );
+        }
+
+        Server.sendMessage(client, response);
+    }
+
     public int clientLogin(Client client, String name, String hash)
             throws SQLException
     {
@@ -117,7 +169,7 @@ public class ClientManager {
             return OperationResult.FAILED_SYS_ERROR;
         }
 
-        return OperationResult.SUCCESS;
+        return OperationResult.SUCCESS_LOGGED_IN;
     }
 
     public int registerClient(Client client,
@@ -127,12 +179,6 @@ public class ClientManager {
             throws SQLException
     {
         print("[INFO] Gebruiker %1$s met nummer %2$s wordt aangemaakt..", name, String.valueOf(number));
-        // Return codes:
-        //   1: Success
-        //   0: Failed -> Name taken
-        //  -1: Failed -> Number taken
-        //  -2: Failed -> Invalid name (Zou niet mogelijk moeten zijn, maarja)
-        //  -3: Failed -> Syserr
 
         //TODO: Hier naamcheck maken
         if (1 == 2)
@@ -176,7 +222,7 @@ public class ClientManager {
         client.setStatus(Status.ONLINE);
 
         print("[INFO] Gebruiker %1$s met nummer %2$s aangemaakt", name, String.valueOf(number));
-        return OperationResult.SUCCESS;
+        return OperationResult.SUCCESS_LOGGED_IN;
     }
 
     private int checkAvailable(String name,

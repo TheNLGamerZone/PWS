@@ -72,7 +72,6 @@ public class SettingScreen {
         layoutsettingsscreen.setLeft(linksinstellingen);
         layoutsettingsscreen.setRight(rechtsinstellingen);
         Scene settingsscreen = new Scene(layoutsettingsscreen, 800, 500);
-        window.setTitle("Instellingen");
         window.setScene(settingsscreen);
         window.show();
 

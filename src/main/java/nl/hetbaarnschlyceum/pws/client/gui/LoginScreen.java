@@ -4,20 +4,25 @@ import javafx.scene.control.*;
 import javafx.scene.layout.Pane;
 import javafx.stage.Stage;
 import nl.hetbaarnschlyceum.pws.client.Client;
+import nl.hetbaarnschlyceum.pws.crypto.Hash;
 
 import java.util.Arrays;
 
 public class LoginScreen {
+    static Button loginButton;
+    static Button registerButton;
+    static TextField textFieldName;
+    static PasswordField passwordField;
 
-    public static Scene showLoginscreen(Stage window){
+    static Scene showLoginscreen(Stage window){
         int thoog = 4;
-        Button loginbutton = new Button("Inloggen");
-        Button registerbutton = new Button("Registreren");
-        TextField textfieldname = new TextField();
+        loginButton = new Button("Inloggen");
+        registerButton = new Button("Registreren");
+        textFieldName = new TextField();
         Alert foutmelding = new Alert(Alert.AlertType.ERROR);
         foutmelding.setContentText("De volgende karakters zijn niet toegestaan: " +
                 Arrays.toString(Client.forbiddenStrings));
-        PasswordField textfieldpassword = new PasswordField();
+        passwordField = new PasswordField();
         Label labelname = new Label("Naam:");
         Label labelpassword = new Label("Wachtwoord:");
         Label headerlabel = new Label("Inloggen");
@@ -25,56 +30,55 @@ public class LoginScreen {
         Alert notRegistered = new Alert(Alert.AlertType.INFORMATION);
         notRegistered.setContentText("Inloggen vanwege BETA");
 
-        loginbutton.setOnAction(event -> {
-            if(Arrays.stream(Client.forbiddenStrings).parallel().anyMatch(textfieldname.getText()::contains))
+        loginButton.setOnAction(event -> {
+            if(Arrays.stream(Client.forbiddenStrings).parallel().anyMatch(textFieldName.getText()::contains)
+                    || Arrays.stream(Client.forbiddenStrings).parallel().anyMatch(passwordField.getText()::contains))
             {
-                textfieldname.setText("");
+                textFieldName.setText("");
+                passwordField.setText("");
                 foutmelding.show();
-            }
-            else {
-                loginbutton.setDisable(true);
-                registerbutton.setDisable(true);
-                textfieldname.setDisable(true);
-                textfieldpassword.setDisable(true);
-                loginbutton.setText("Verbinding maken..");
+            } else if (textFieldName.getText().length() < 6
+                    || passwordField.getText().length() < 8)
+            {
+                Alert alert = new Alert(Alert.AlertType.ERROR);
 
-                String name = textfieldname.getText();
-                String password = textfieldpassword.getText();
+                alert.setContentText("Gebruikersnaam moet minimaal 6 karakters zijn!" +
+                        "\nWachtwoord moet minimaal 8 karakters zijn!");
+                alert.show();
+            } else
+            {
+                toggleControls();
 
-                if (Client.initConnection(name, password))
-                {
-                    // Verbinding kon worden gemaakt
-                } else
+                Client.username = textFieldName.getText();
+                Client.hashedPassword = Hash.generateHash(passwordField.getText());
+
+                if (!Client.initConnection(Client.username, Client.hashedPassword, false))
                 {
                     Alert alert = new Alert(Alert.AlertType.ERROR);
 
                     alert.setContentText("Kon niet verbinden met de server");
                     alert.show();
-                    loginbutton.setDisable(false);
-                    registerbutton.setDisable(false);
-                    textfieldname.setDisable(false);
-                    textfieldpassword.setDisable(false);
-                    loginbutton.setText("Inloggen");
-
+                    toggleControls();
                 }
-
-                //MainScreen.showMainscreen(window, loginname[0]);
             }
         });
-        registerbutton.setOnAction(e -> RegisterScreen.showRegisterscreen(window));
+        registerButton.setOnAction(e ->
+                GUIMainClass.demoAlert.show()
+                //RegisterScreen.showRegisterscreen(window)
+        );
 
-        textfieldname.setLayoutX(360);
-        textfieldname.setLayoutY(218);
-        textfieldname.setPrefWidth(100);
-        textfieldname.setMaxHeight(thoog);
-        textfieldpassword.setLayoutX(360);
-        textfieldpassword.setLayoutY(250);
-        textfieldpassword.setPrefWidth(100);
-        textfieldpassword.setMaxHeight(thoog);
-        loginbutton.setLayoutX(360);
-        loginbutton.setLayoutY(285);
-        registerbutton.setLayoutX(670);
-        registerbutton.setLayoutY(430);
+        textFieldName.setLayoutX(360);
+        textFieldName.setLayoutY(218);
+        textFieldName.setPrefWidth(100);
+        textFieldName.setMaxHeight(thoog);
+        passwordField.setLayoutX(360);
+        passwordField.setLayoutY(250);
+        passwordField.setPrefWidth(100);
+        passwordField.setMaxHeight(thoog);
+        loginButton.setLayoutX(360);
+        loginButton.setLayoutY(285);
+        registerButton.setLayoutX(670);
+        registerButton.setLayoutY(430);
         labelname.setLayoutX(320);
         labelname.setLayoutY(222);
         labelpassword.setLayoutX(278);
@@ -83,12 +87,30 @@ public class LoginScreen {
         headerlabel.setLayoutY(190);
 
         Pane layoutloginscreen = new Pane();
-        layoutloginscreen.getChildren().addAll(loginbutton,registerbutton,textfieldname,textfieldpassword,labelname,labelpassword,headerlabel);
+        layoutloginscreen.getChildren().addAll(loginButton,registerButton,textFieldName,passwordField,labelname,labelpassword,headerlabel);
         Scene loginscreen = new Scene(layoutloginscreen,800, 500);
-        window.setTitle("Inloggen");
         window.setScene(loginscreen);
         window.show();
 
         return loginscreen;
+    }
+
+    public static void toggleControls()
+    {
+        if (!loginButton.isDisabled())
+        {
+            loginButton.setDisable(true);
+            registerButton.setDisable(true);
+            textFieldName.setDisable(true);
+            passwordField.setDisable(true);
+            loginButton.setText("Verbinding maken..");
+        } else
+        {
+            loginButton.setDisable(false);
+            registerButton.setDisable(false);
+            textFieldName.setDisable(false);
+            passwordField.setDisable(false);
+            loginButton.setText("Inloggen");
+        }
     }
 }

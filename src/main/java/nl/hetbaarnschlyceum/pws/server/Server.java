@@ -137,7 +137,7 @@ public class Server implements Runnable
 
     private void processData(Client client, String data)
     {
-        print(" Data ontvangen: %s", data);
+        print("[INFO] Data ontvangen: %s", data);
 
         try
         {
@@ -161,7 +161,7 @@ public class Server implements Runnable
                     // Verwachte reactie: DH_START
                     KeyPair keyPair = ECDH.generateKeyPair();
                     String publicKey = ECDH.getPublicData(keyPair);
-                    String response = this.prepareMessage(client,
+                    String response = prepareMessage(client,
                             PWS.MessageIdentifier.DH_START,
                             publicKey
                     );
@@ -170,7 +170,6 @@ public class Server implements Runnable
                 } else if (messageIdentifier == PWS.MessageIdentifier.DH_ACK)
                 {
                     // Verwachte reactie: LOGIN
-                    int startCount = new Random().nextInt(329) + 23;
                     KeyPair keyPair = client.getDHKeys();
                     String publicKeyClient = (String) messageData[1];
                     byte[] sharedSecret = KeyManagement.hexToBytes(
@@ -189,20 +188,36 @@ public class Server implements Runnable
                     client.setSessionKey(secretKey);
                     client.setHMACKey(
                             Hash.generateHash(
-                                    KeyManagement.bytesToHex(sharedSecret) +
                                     Base64.getEncoder().encodeToString(client.getSessionKey().getEncoded())
                             )
                     );
-                    client.setMessageCount(startCount);
 
-                    String response = this.prepareMessage(client,
-                            PWS.MessageIdentifier.LOGIN,
-                            String.valueOf(startCount));
+                    String response = prepareMessage(client,
+                            PWS.MessageIdentifier.LOGIN);
 
                     sendMessage(client, response);
                 } else if (messageIdentifier == PWS.MessageIdentifier.LOGIN_INFORMATION)
                 {
                     // Verwachte reactie: LOGIN_RESULT
+                    String username = (String) messageData[1];
+                    String hashedPassword = (String) messageData[2];
+                    boolean registerUser = Boolean.getBoolean((String) messageData[3]);
+                    int registerNumber = Integer.valueOf((String) messageData[4]);
+
+                    TCServer.executeTask(() -> {
+                        if (registerUser)
+                        {
+                            TCServer.getClientManager().registerTask(client,
+                                    username,
+                                    registerNumber,
+                                    hashedPassword);
+                        } else {
+                            TCServer.getClientManager().loginTask(client,
+                                    username,
+                                    hashedPassword);
+                        }
+                        return null;
+                    });
                 }
             }
         } catch (Exception e)
@@ -213,7 +228,7 @@ public class Server implements Runnable
     }
 
     //TODO: AES enzo toevoegen
-    public String prepareMessage(Client client,
+    public static String prepareMessage(Client client,
                                  PWS.MessageIdentifier messageIdentifier,
                                  String... arguments)
     {
@@ -234,27 +249,19 @@ public class Server implements Runnable
                     stringBuilder.toString());
 
             String hMAC = "null";
-            String messageCount = "null";
             if (client.getSessionKey() != null &&
                     client.getHMACKey() != null)
             {
                 hMAC = Hash.generateHMAC(formattedMessage, client.getHMACKey());
-
-                if (client.getMessageCount() != -1)
-                {
-                    messageCount = String.valueOf(client.getMessageCount() - 1);
-                }
             }
 
-            return formattedMessage
-                    .replace("HMAC_X8723784X", hMAC)
-                    .replace("MSGCOUNT_X987231X", messageCount);
+            return formattedMessage.replace("HMAC_X8723784X", hMAC);
         }
 
         return null;
     }
 
-    //TODO: Message count kloppend maken
+    //TODO: Debugberichten bij fouten nog weghalen
     private Object[] checkValidMessage(Client client, String data)
     {
         if (!data.contains("_&2d"))
@@ -267,13 +274,14 @@ public class Server implements Runnable
         // Controleren voor versleuteling ed
         if (data.contains("<<*3456*34636*>>"))
         {
-            if (data.split("<<*3456*34636*>>").length != 2)
+            if (data.split("<<\\*3456\\*34636\\*>>").length != 2)
             {
+                System.out.println("Wel versleuteling, maar niet genoeg argumenten");
                 return null;
             }
 
-            String hmacTotal = data.split("<<*3456*34636*>>")[0];
-            String encryptedData = data.split("<<*3456*34636*>>")[1];
+            String hmacTotal = data.split("<<\\*3456\\*34636\\*>>")[0];
+            String encryptedData = data.split("<<\\*3456\\*34636\\*>>")[1];
 
             if (!Hash.generateHMAC(encryptedData, client.getHMACKey()).equals(hmacTotal))
             {
@@ -286,14 +294,27 @@ public class Server implements Runnable
                     client.getInitializationVector()
             );
 
-            if (decryptedData.contains("<<&>>"))
+            if (!decryptedData.contains("<<&>>")
+                    || !decryptedData.contains("<<->>"))
             {
                 System.out.println("Decryptie ging niet goed: " + decryptedData);
                 return null;
             }
 
+            System.out.println("DATA: " + decryptedData);
+            if (decryptedData.split("<<&>>").length < 3)
+            {
+                System.out.println("Te weinig argumenten: " + decryptedData);
+                return null;
+            }
+
+            long timeSend = Long.valueOf(decryptedData.split("<<&>>")[2]);
             String hmacData = decryptedData.split("<<&>>")[1];
-            String rawData = decryptedData.replace(hmacData, "null");
+            String rawData = decryptedData
+                    .replace(hmacData, "HMAC_X8723784X")
+                    .replace(String.valueOf(timeSend), "MSGCOUNT_X987231X"); //TODO: VOOR DISCUSSIE -> dit is eigenlijk niet veilig omdat tijd niet onder hmac valt
+
+            data = rawData;
 
             if (!Hash.generateHMAC(rawData, client.getHMACKey()).equals(hmacData))
             {
@@ -301,26 +322,31 @@ public class Server implements Runnable
                 return null;
             }
 
-            data = rawData;
-
-            if (data.split("<<&>>").length < 3)
+            // Eerste waarde zetten als dit eerste versleutelde bericht is
+            if (data.split("<<->>")[0].equals(PWS.MessageIdentifier.LOGIN_INFORMATION.getDataID()))
             {
-                System.out.println("Te weinig argumenten: " + data);
+                client.setLastMessageReceivedTime(System.currentTimeMillis() - 20 * 1000);
+            }
+
+            if (timeSend < client.getLastMessageReceivedTime() ||
+                    System.currentTimeMillis() - timeSend > 10 * 1000 ||
+                    System.currentTimeMillis() - timeSend < 1)
+            {
+                System.out.println("Verkeerde lastMessageReceived. Vereist: " + client.getLastMessageReceivedTime()
+                        + ", gevonden: " + timeSend);
+
+                if (System.currentTimeMillis() - timeSend > 10 * 1000 ||
+                        System.currentTimeMillis() - timeSend < 1)
+                {
+                    System.out.println("Verschil te groot");
+                }
                 return null;
             }
 
-            int messageCount = Integer.valueOf(data.split("<<&>>")[2]);
-
-            if (messageCount != client.getMessageCount())
-            {
-                System.out.println("Verkeerde messageCount. Vereist: " + client.getMessageCount()
-                + ", gevonden: " + (messageCount + 1));
-                return null;
-            }
-
-            client.setMessageCount(client.getMessageCount() + 2);
+            client.setLastMessageReceivedTime(timeSend);
         }
 
+        print("[INFO] Data verwerken: %s", data);
         if (data.split("<<->>").length != 2)
         {
             return null;
@@ -391,7 +417,7 @@ public class Server implements Runnable
     private static void sendMessage(Client client, SocketChannel socketChannel, String data)
     {
         try {
-            print(" Bericht naar %s sturen: %s", socketChannel.getRemoteAddress().toString(), data);
+            data = data.replace("MSGCOUNT_X987231X", String.valueOf(System.currentTimeMillis()));
 
             if (client.getSessionKey() != null
                     && client.getHMACKey() != null)
@@ -404,6 +430,7 @@ public class Server implements Runnable
                 );
             }
 
+            print("[INFO] Bericht naar %s sturen: %s", socketChannel.getRemoteAddress().toString(), data);
             socketChannel.write(charsetEncoder.encode(CharBuffer.wrap(data + "_&2d")));
         } catch (IOException e) {
             e.printStackTrace();

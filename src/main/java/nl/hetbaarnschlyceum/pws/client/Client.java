@@ -20,6 +20,12 @@ public class Client
     private static String serverIP;
     private static int serverPort;
 
+    public static boolean connectionEstablished = false;
+    public static boolean registerUser;
+    public static int registerNumber;
+    public static String username;
+    public static String hashedPassword;
+
     public Client(String serverIP, String serverPort)
     {
         print("[INFO] Client wordt gestart..");
@@ -29,19 +35,34 @@ public class Client
         GUIMainClass.start();
     }
 
-    public static boolean initConnection(String username, String password)
+    public static boolean initConnection(String username,
+                                         String password,
+                                         boolean registerAttempt)
     {
-        connectionThread = new ConnectionThread(serverIP, serverPort);
+        registerUser = registerAttempt;
 
-        if (connectionThread.isConnected())
+        if (connectionEstablished)
         {
-            connectionThread.processedRequestFromServer(
-                    connectionThread.prepareMessage(PWS.MessageIdentifier.CONNECTED)
+            String response = ConnectionThread.prepareMessage(PWS.MessageIdentifier.LOGIN_INFORMATION,
+                    Client.username,
+                    Client.hashedPassword,
+                    String.valueOf(registerUser),
+                    (registerUser) ? String.valueOf(registerNumber) : "0"
             );
 
+            ConnectionThread.processedRequestFromServer(response);
             return true;
-        }
+        } else {
+            connectionThread = new ConnectionThread(serverIP, serverPort);
 
+            if (connectionThread.isConnected()) {
+                connectionThread.processedRequestFromServer(
+                        connectionThread.prepareMessage(PWS.MessageIdentifier.CONNECTED)
+                );
+
+                return true;
+            }
+        }
         return false;
     }
 }
