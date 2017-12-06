@@ -5,6 +5,7 @@ import nl.hetbaarnschlyceum.pws.crypto.AES;
 import nl.hetbaarnschlyceum.pws.crypto.ECDH;
 import nl.hetbaarnschlyceum.pws.crypto.Hash;
 import nl.hetbaarnschlyceum.pws.crypto.KeyManagement;
+import nl.hetbaarnschlyceum.pws.server.tc.Request;
 import nl.hetbaarnschlyceum.pws.server.tc.TCServer;
 import nl.hetbaarnschlyceum.pws.server.tc.client.Client;
 
@@ -23,6 +24,7 @@ import java.nio.charset.Charset;
 import java.nio.charset.CharsetEncoder;
 import java.security.KeyPair;
 import java.util.*;
+import java.util.concurrent.Callable;
 
 import static nl.hetbaarnschlyceum.pws.PWS.print;
 
@@ -151,6 +153,45 @@ public class Server implements Runnable
             if (messageData[0] == PWS.MessageIdentifier.REQUEST)
             {
                 // Normaal verzoek
+                UUID requestID = UUID.fromString((String) messageData[1]);
+                String request = (String) messageData[2];
+
+                TCServer.executeTask(() -> {
+                    String requestType = request.split(Request.argumentSeperator)[0];
+
+                    switch (requestType)
+                    {
+                        case "CALL_REQUEST":
+                            int number = Integer.valueOf(request.split(Request.argumentSeperator)[0]);
+
+                            TCServer.getClientManager().call(client, number, requestID);
+                            break;
+                        default:
+                            break;
+                    }
+                    return null;
+                });
+            } else if (messageData[1] == PWS.MessageIdentifier.REQUEST_RESULT)
+            {
+                UUID requestID = UUID.fromString((String) messageData[1]);
+                String requestResult = (String) messageData[2];
+
+                TCServer.executeTask(() -> {
+                    for (Client clients : TCServer.getClientManager().getClients())
+                    {
+                        if (clients.isWaiting(requestID))
+                        {
+                            clients.addRequestResult(requestID, requestResult);
+                        }
+                    }
+                    return null;
+                });
+            } else if (messageData[0] == PWS.MessageIdentifier.DISCONNECT)
+            {
+                TCServer.executeTask(() -> {
+                    TCServer.getClientManager().clientLogout(client);
+                    return null;
+                });
             } else
             {
                 // Verbinding maken met de server
@@ -159,43 +200,49 @@ public class Server implements Runnable
                 if (messageIdentifier == PWS.MessageIdentifier.CONNECTED)
                 {
                     // Verwachte reactie: DH_START
-                    KeyPair keyPair = ECDH.generateKeyPair();
-                    String publicKey = ECDH.getPublicData(keyPair);
-                    String response = prepareMessage(client,
-                            PWS.MessageIdentifier.DH_START,
-                            publicKey
-                    );
-                    client.setDHKeys(keyPair);
-                    sendMessage(client, response);
+                    TCServer.executeTask(() -> {
+                        KeyPair keyPair = ECDH.generateKeyPair();
+                        String publicKey = ECDH.getPublicData(keyPair);
+                        String response = prepareMessage(client,
+                                PWS.MessageIdentifier.DH_START,
+                                publicKey
+                        );
+                        client.setDHKeys(keyPair);
+                        sendMessage(client, response);
+                        return null;
+                    });
                 } else if (messageIdentifier == PWS.MessageIdentifier.DH_ACK)
                 {
                     // Verwachte reactie: LOGIN
-                    KeyPair keyPair = client.getDHKeys();
-                    String publicKeyClient = (String) messageData[1];
-                    byte[] sharedSecret = KeyManagement.hexToBytes(
-                            Hash.generateHash(
-                                    ECDH.getSecret(keyPair, publicKeyClient)
-                            )
-                    );
-                    SecretKey secretKey = new SecretKeySpec(sharedSecret, 0,sharedSecret.length, "AES");
-                    IvParameterSpec ivParameterSpec = new IvParameterSpec(
-                        KeyManagement.hexToBytes(
-                                (String) messageData[2]
-                        )
-                    );
+                    TCServer.executeTask(() -> {
+                        KeyPair keyPair = client.getDHKeys();
+                        String publicKeyClient = (String) messageData[1];
+                        byte[] sharedSecret = KeyManagement.hexToBytes(
+                                Hash.generateHash(
+                                        ECDH.getSecret(keyPair, publicKeyClient)
+                                )
+                        );
+                        SecretKey secretKey = new SecretKeySpec(sharedSecret, 0,sharedSecret.length, "AES");
+                        IvParameterSpec ivParameterSpec = new IvParameterSpec(
+                                KeyManagement.hexToBytes(
+                                        (String) messageData[2]
+                                )
+                        );
 
-                    client.setInitializationVector(ivParameterSpec);
-                    client.setSessionKey(secretKey);
-                    client.setHMACKey(
-                            Hash.generateHash(
-                                    Base64.getEncoder().encodeToString(client.getSessionKey().getEncoded())
-                            )
-                    );
+                        client.setInitializationVector(ivParameterSpec);
+                        client.setSessionKey(secretKey);
+                        client.setHMACKey(
+                                Hash.generateHash(
+                                        Base64.getEncoder().encodeToString(client.getSessionKey().getEncoded())
+                                )
+                        );
 
-                    String response = prepareMessage(client,
-                            PWS.MessageIdentifier.LOGIN);
+                        String response = prepareMessage(client,
+                                PWS.MessageIdentifier.LOGIN);
 
-                    sendMessage(client, response);
+                        sendMessage(client, response);
+                        return null;
+                    });
                 } else if (messageIdentifier == PWS.MessageIdentifier.LOGIN_INFORMATION)
                 {
                     // Verwachte reactie: LOGIN_RESULT
@@ -227,10 +274,10 @@ public class Server implements Runnable
         }
     }
 
-    //TODO: AES enzo toevoegen
     public static String prepareMessage(Client client,
-                                 PWS.MessageIdentifier messageIdentifier,
-                                 String... arguments)
+                                        PWS.MessageIdentifier messageIdentifier,
+                                        UUID requestID,
+                                        String... arguments)
     {
         if (arguments.length == messageIdentifier.getArguments())
         {
@@ -243,7 +290,7 @@ public class Server implements Runnable
 
             String formattedMessage = String.format("%s<<->>%s<<&>>%s<<&>>%s%s",
                     messageIdentifier.getDataID(),
-                    UUID.randomUUID().toString(),
+                    requestID.toString(),
                     "HMAC_X8723784X", // HMAC
                     "MSGCOUNT_X987231X", // Message count
                     stringBuilder.toString());
@@ -259,6 +306,13 @@ public class Server implements Runnable
         }
 
         return null;
+    }
+
+    public static String prepareMessage(Client client,
+                                 PWS.MessageIdentifier messageIdentifier,
+                                 String... arguments)
+    {
+        return prepareMessage(client, messageIdentifier, UUID.randomUUID(), arguments);
     }
 
     //TODO: Debugberichten bij fouten nog weghalen
@@ -384,6 +438,12 @@ public class Server implements Runnable
 
             if (i < 4)
             {
+                if (messageIdentifier == PWS.MessageIdentifier.REQUEST
+                        || messageIdentifier == PWS.MessageIdentifier.REQUEST_RESULT)
+                {
+                    arguments.add(arg);
+                }
+
                 continue;
             }
 
@@ -401,6 +461,18 @@ public class Server implements Runnable
         }
 
         return messageData;
+    }
+
+    public static void sendRequest(Client client, String request)
+    {
+        UUID requestID = UUID.randomUUID();
+        String response = prepareMessage(client,
+                PWS.MessageIdentifier.REQUEST,
+                requestID,
+                request);
+
+        client.addAwaitingRequest(requestID);
+        sendMessage(client, response);
     }
 
     public static void sendMessage(UUID uuid, String data)

@@ -1,8 +1,16 @@
 package nl.hetbaarnschlyceum.pws.client.gui;
 
 import javafx.application.Application;
+import javafx.application.Platform;
+import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
 import javafx.stage.Stage;
+import nl.hetbaarnschlyceum.pws.PWS;
+import nl.hetbaarnschlyceum.pws.client.ConnectionThread;
+
+import java.awt.event.ActionEvent;
+
+import static nl.hetbaarnschlyceum.pws.PWS.print;
 
 public class GUIMainClass extends Application  {
     public static Stage window;
@@ -21,5 +29,21 @@ public class GUIMainClass extends Application  {
         window = primaryStage;
         window.setResizable(false);
         LoginScreen.showLoginscreen(window);
+    }
+
+    @Override
+    public void stop()
+    {
+        print("[INFO] De client wordt gesloten");
+        ConnectionThread.processedRequestFromServer(
+                ConnectionThread.prepareMessage(PWS.MessageIdentifier.DISCONNECT)
+        );
+        ConnectionThread.closeConnection();
+    }
+
+    @FXML
+    public void exitApplication(ActionEvent event)
+    {
+        Platform.exit();
     }
 }

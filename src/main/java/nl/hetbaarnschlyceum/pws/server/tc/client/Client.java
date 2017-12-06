@@ -5,9 +5,11 @@ import javax.crypto.spec.IvParameterSpec;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.security.KeyPair;
+import java.sql.Array;
 import java.sql.Blob;
 import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.UUID;
 
 public class Client {
@@ -30,6 +32,9 @@ public class Client {
     private SocketChannel socketChannel;
     public ByteBuffer byteBuffer;
 
+    private HashMap<UUID, String> requestList;
+    private ArrayList<UUID> awaitingRequests;
+
     public Client(SocketChannel socketChannel, String IP)
     {
         this.socketChannel = socketChannel;
@@ -37,7 +42,10 @@ public class Client {
         this.uuid = UUID.randomUUID();
         this.failedAttempts = new ArrayList<>();
         this.IP = IP;
+        this.requestList = new HashMap<>();
+        this.awaitingRequests = new ArrayList<>();
     }
+
     public String getIP()
     {
         return this.IP;
@@ -176,6 +184,27 @@ public class Client {
     public long getLastMessageReceivedTime()
     {
         return this.lastMessageReceived;
+    }
+
+    public void addRequestResult(UUID requestID, String result)
+    {
+        awaitingRequests.remove(uuid);
+        requestList.put(requestID, result);
+    }
+
+    public HashMap<UUID, String> getResultList()
+    {
+        return this.requestList;
+    }
+
+    public void addAwaitingRequest(UUID uuid)
+    {
+        awaitingRequests.add(uuid);
+    }
+
+    public boolean isWaiting(UUID uuid)
+    {
+        return awaitingRequests.contains(uuid);
     }
 
     public void addFailedAttempt()

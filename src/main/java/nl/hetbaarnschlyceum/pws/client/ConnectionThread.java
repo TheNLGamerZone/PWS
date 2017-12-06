@@ -85,7 +85,7 @@ public class ConnectionThread implements Runnable
         }
     }
 
-    void closeConnection()
+    public static void closeConnection()
     {
         if (thread != null)
         {
@@ -189,6 +189,9 @@ public class ConnectionThread implements Runnable
         if (messageData[0] == PWS.MessageIdentifier.REQUEST_RESULT)
         {
             // Normaal verzoek
+        } else if (messageData[0] == PWS.MessageIdentifier.REQUEST)
+        {
+
         } else
         {
             // Verbinding maken met de server
@@ -250,9 +253,9 @@ public class ConnectionThread implements Runnable
         }
     }
 
-    //TODO: AES enzo toevoegen
-    static String prepareMessage(PWS.MessageIdentifier messageIdentifier,
-                                String... arguments)
+    public static String prepareMessage(PWS.MessageIdentifier messageIdentifier,
+                                        UUID requestID,
+                                        String... arguments)
     {
         if (arguments.length == messageIdentifier.getArguments())
         {
@@ -265,7 +268,7 @@ public class ConnectionThread implements Runnable
 
             String formattedMessage = String.format("%s<<->>%s<<&>>%s<<&>>%s%s",
                     messageIdentifier.getDataID(),
-                    UUID.randomUUID().toString(),
+                    requestID.toString(),
                     "HMAC_X8723784X", // HMAC
                     "MSGCOUNT_X987231X", // Message count
                     stringBuilder.toString());
@@ -281,6 +284,12 @@ public class ConnectionThread implements Runnable
         }
 
         return null;
+    }
+
+    public static String prepareMessage(PWS.MessageIdentifier messageIdentifier,
+                                String... arguments)
+    {
+        return prepareMessage(messageIdentifier, UUID.randomUUID(), arguments);
     }
 
     private Object[] checkValidMessage(String data)
@@ -409,6 +418,12 @@ public class ConnectionThread implements Runnable
 
             if (i < 4)
             {
+                if (messageIdentifier == PWS.MessageIdentifier.REQUEST
+                        || messageIdentifier == PWS.MessageIdentifier.REQUEST_RESULT)
+                {
+                    arguments.add(arg);
+                }
+
                 continue;
             }
 

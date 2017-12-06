@@ -3,6 +3,7 @@ package nl.hetbaarnschlyceum.pws.server.tc.client;
 import nl.hetbaarnschlyceum.pws.PWS;
 import nl.hetbaarnschlyceum.pws.server.Server;
 import nl.hetbaarnschlyceum.pws.server.tc.OperationResult;
+import nl.hetbaarnschlyceum.pws.server.tc.Request;
 import nl.hetbaarnschlyceum.pws.server.tc.TCServer;
 
 import javax.crypto.SecretKey;
@@ -31,6 +32,70 @@ public class ClientManager {
     {
         //TODO: Hier nog iets maken dat een tempban oid maakt
         client.addFailedAttempt();
+    }
+
+    public void call(Client client,
+                     int targetNumber,
+                     UUID requestID)
+    {
+        String response = Server.prepareMessage(client,
+                PWS.MessageIdentifier.REQUEST_RESULT,
+                requestID,
+                String.valueOf(OperationResult.FAILED_SYS_ERROR)
+        );
+
+        try
+        {
+            int existingNumber = checkAvailable("DEVNM_X76786X", targetNumber);
+
+            if (existingNumber != OperationResult.FAILED_DUPLICATE_NUMBER)
+            {
+                response = Server.prepareMessage(client,
+                        PWS.MessageIdentifier.REQUEST_RESULT,
+                        requestID,
+                        String.valueOf(OperationResult.FAILED_UNKNOWN_NUMBER)
+                );
+
+                Server.sendMessage(client, response);
+                return;
+            }
+
+            Client targetClient = getClient(targetNumber);
+
+            if (targetClient == null
+                    || targetClient.getStatus() == Status.OFFLINE
+                    || targetClient.getStatus() == Status.INVISIBLE
+                    || targetClient.getStatus() == Status.DO_NOT_DISTURB)
+            {
+                response = Server.prepareMessage(client,
+                        PWS.MessageIdentifier.REQUEST_RESULT,
+                        requestID,
+                        String.valueOf(OperationResult.FAILED_USER_OFFLINE)
+                );
+
+                Server.sendMessage(client, response);
+                return;
+            }
+
+            response = Server.prepareMessage(client,
+                    PWS.MessageIdentifier.REQUEST_RESULT,
+                    requestID,
+                    String.valueOf(OperationResult.SUCCESS_CALLING)
+            );
+
+            Server.sendRequest(targetClient,
+                    Request.CALL_REQUEST.replace("NUMBER", String.valueOf(client.getNumber()))
+            );
+
+        } catch (SQLException e) {
+            print("[FOUT] Er is iets mis gegaan bij het bellen van %s door %s: %s",
+                    String.valueOf(targetNumber),
+                    client.getName(),
+                    e.getMessage()
+            );
+        }
+
+        Server.sendMessage(client, response);
     }
 
     public void clientConnectionDropped(Client client)
@@ -245,11 +310,28 @@ public class ClientManager {
         }
     }
 
+    public ArrayList<Client> getClients() {
+        return loadedClients;
+    }
+
     public Client getClient(UUID uuid)
     {
         for (Client client : loadedClients)
         {
             if (client.getUUID().equals(uuid))
+            {
+                return client;
+            }
+        }
+
+        return null;
+    }
+
+    public Client getClient(int number)
+    {
+        for (Client client : loadedClients)
+        {
+            if (client.getNumber() == number)
             {
                 return client;
             }

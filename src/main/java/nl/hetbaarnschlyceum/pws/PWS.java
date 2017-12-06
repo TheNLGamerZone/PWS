@@ -37,6 +37,7 @@ public class PWS {
         LOGIN("LGN", 0), // server -> client                   LGN<<->>message_id<<&>>hmac<<&>>message_time
         LOGIN_INFORMATION("LGN_INF", 4), // client -> server   LGN_INF<<->>message_id<<&>>hmac<<&>>message_time<<&>>username<<&>>password_hash<<&>>new_user<<&>>number_if_new
         LOGIN_RESULT("LGN_RSL", 1), // server -> client        LGN_RSL<<->>message_id<<&>>hmac<<&>>message_time<<&>>login_result
+        DISCONNECT("DISC", 0) // server <-> client             DISC<<->>message_id<<&>>hmac<<&>>message_time
         ;
 
         private String dataID;

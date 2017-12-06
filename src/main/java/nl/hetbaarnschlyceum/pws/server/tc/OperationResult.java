@@ -1,9 +1,12 @@
 package nl.hetbaarnschlyceum.pws.server.tc;
 
 public class OperationResult {
-    public static final int SUCCESS = 8;
-    public static final int SUCCESS_LOGGED_IN = 7;
-    public static final int UNIQUE_USER = 6;
+    public static final int SUCCESS = 14;
+    public static final int SUCCESS_LOGGED_IN = 13;
+    public static final int UNIQUE_USER = 12;
+    public static final int SUCCESS_CALLING = 11;
+    public static final int FAILED_USER_OFFLINE = 7;
+    public static final int FAILED_UNKNOWN_NUMBER = 6;
     public static final int FAILED_DUPLICATE_NAME = 5;
     public static final int FAILED_DUPLICATE_NUMBER = 4;
     public static final int FAILED_NAMECHECK = 3;
@@ -18,5 +21,7 @@ public class OperationResult {
             "Gebruikersnaam voldoet niet aan de eisen", // FAILED_NAMECHECK
             "Nummer bestaat al", // FAILED_DUPLICATE_NUMBER
             "Gebruikersnaam bestaat al", // FAILED_DUPLICATE_NAME
+            "Nummer bestaat niet", // FAILED_UNKNOWN_NUMBER
+            "Gebruiker is niet online", // FAILED_USER_OFFLINE
     };
 }

@@ -3,6 +3,9 @@ package nl.hetbaarnschlyceum.pws.client;
 import nl.hetbaarnschlyceum.pws.PWS;
 import nl.hetbaarnschlyceum.pws.client.gui.GUIMainClass;
 
+import java.util.HashMap;
+import java.util.UUID;
+
 import static nl.hetbaarnschlyceum.pws.PWS.print;
 
 public class Client
@@ -13,8 +16,10 @@ public class Client
             "<<->>",
             "<<&>>",
             "<<*3456*34636*>>",
+            "<<&6236&>>",
             "HMAC_X8723784X",
-            "MSGCOUNT_X987231X"
+            "MSGCOUNT_X987231X",
+            "DEVNM_X76786X"
     };
     private static ConnectionThread connectionThread;
     private static String serverIP;

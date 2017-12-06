@@ -63,7 +63,7 @@ public class SettingScreen {
         //onder
         HBox onder = new HBox();
         Button buttontohomescreen = new Button("Terug naar het hoofdscherm");
-        buttontohomescreen.setOnAction(e -> MainScreen.showMainscreen(window, "TODO: fixen"));
+        buttontohomescreen.setOnAction(e -> MainScreen.showMainscreen(window));
         onder.setAlignment(Pos.CENTER);
         onder.getChildren().add(buttontohomescreen);
         onder.setMinHeight(100);
