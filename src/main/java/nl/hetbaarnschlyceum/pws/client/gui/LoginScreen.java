@@ -1,6 +1,7 @@
 package nl.hetbaarnschlyceum.pws.client.gui;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.input.KeyCode;
 import javafx.scene.layout.Pane;
 import javafx.stage.Stage;
 import nl.hetbaarnschlyceum.pws.client.Client;
@@ -29,6 +30,15 @@ public class LoginScreen {
 
         Alert notRegistered = new Alert(Alert.AlertType.INFORMATION);
         notRegistered.setContentText("Inloggen vanwege BETA");
+
+        textFieldName.requestFocus();
+
+        passwordField.setOnKeyPressed(event -> {
+            if (event.getCode() == KeyCode.ENTER)
+            {
+                loginButton.fire();
+            }
+        });
 
         loginButton.setOnAction(event -> {
             if(Arrays.stream(Client.forbiddenStrings).parallel().anyMatch(textFieldName.getText()::contains)

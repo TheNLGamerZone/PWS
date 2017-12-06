@@ -2,10 +2,12 @@ package nl.hetbaarnschlyceum.pws.server.tc;
 
 import nl.hetbaarnschlyceum.pws.PWS;
 import nl.hetbaarnschlyceum.pws.server.Server;
+import nl.hetbaarnschlyceum.pws.server.tc.client.Client;
 import nl.hetbaarnschlyceum.pws.server.tc.client.ClientManager;
 import nl.hetbaarnschlyceum.pws.server.tc.sql.SQL;
 
 import java.util.Scanner;
+import java.util.UUID;
 import java.util.concurrent.*;
 
 public class TCServer
@@ -31,6 +33,28 @@ public class TCServer
         clientManager = new ClientManager();
         this.server = new Thread(new Server(Integer.valueOf(serverPort)));
         this.server.start();
+
+        executeDelayedTask(() -> {
+            for (Client client : clientManager.getClients())
+            {
+                if (!client.getResultList().isEmpty())
+                {
+                    executeTask(() -> {
+                        for (UUID uuid : client.getResultList().keySet())
+                        {
+                            String requestResult = client.getResultList().get(uuid);
+
+                            client.getResultList().remove(uuid);
+                            clientManager.processRequestResult(client, requestResult);
+                        }
+
+                        return null;
+                    });
+                }
+            }
+
+            return null;
+        }, 1, TimeUnit.SECONDS);
 
         Scanner scanner = new Scanner(System.in);
 

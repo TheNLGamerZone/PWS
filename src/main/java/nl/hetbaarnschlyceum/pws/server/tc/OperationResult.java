@@ -5,6 +5,9 @@ public class OperationResult {
     public static final int SUCCESS_LOGGED_IN = 13;
     public static final int UNIQUE_USER = 12;
     public static final int SUCCESS_CALLING = 11;
+    public static final int SUCCESS_CONNECTING = 10;
+    public static final int FAILED_SAME_NUMBER = 9;
+    public static final int FAILED_USER_DENIED_CALL = 8;
     public static final int FAILED_USER_OFFLINE = 7;
     public static final int FAILED_UNKNOWN_NUMBER = 6;
     public static final int FAILED_DUPLICATE_NAME = 5;
@@ -23,5 +26,7 @@ public class OperationResult {
             "Gebruikersnaam bestaat al", // FAILED_DUPLICATE_NAME
             "Nummer bestaat niet", // FAILED_UNKNOWN_NUMBER
             "Gebruiker is niet online", // FAILED_USER_OFFLINE
+            "Gebruiker heeft niet opgenomen", // FAILED_USER_DENIED_CALL
+            "Je kan jezelf niet bellen", // FAILED_SAME_NUMBER
     };
 }

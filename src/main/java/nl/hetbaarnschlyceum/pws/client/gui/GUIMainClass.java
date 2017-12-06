@@ -6,6 +6,7 @@ import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
 import javafx.stage.Stage;
 import nl.hetbaarnschlyceum.pws.PWS;
+import nl.hetbaarnschlyceum.pws.client.Client;
 import nl.hetbaarnschlyceum.pws.client.ConnectionThread;
 
 import java.awt.event.ActionEvent;
@@ -35,10 +36,14 @@ public class GUIMainClass extends Application  {
     public void stop()
     {
         print("[INFO] De client wordt gesloten");
-        ConnectionThread.processedRequestFromServer(
-                ConnectionThread.prepareMessage(PWS.MessageIdentifier.DISCONNECT)
-        );
-        ConnectionThread.closeConnection();
+
+        if (Client.connectionEstablished) {
+            ConnectionThread.processedRequestFromServer(
+                    ConnectionThread.prepareMessage(PWS.MessageIdentifier.DISCONNECT)
+            );
+        }
+
+        System.exit(0);
     }
 
     @FXML

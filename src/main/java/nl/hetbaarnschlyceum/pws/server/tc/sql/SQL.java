@@ -1,5 +1,6 @@
 package nl.hetbaarnschlyceum.pws.server.tc.sql;
 
+import nl.hetbaarnschlyceum.pws.PWS;
 import org.apache.commons.dbcp.ConnectionFactory;
 import org.apache.commons.dbcp.DriverManagerConnectionFactory;
 import org.apache.commons.dbcp.PoolableConnectionFactory;
@@ -121,7 +122,7 @@ public class SQL {
         this.dbAddress = this.dbAddress + "PWSTCS?useSSL=false";
         print("[INFO] Connection pool maken..");
         GenericObjectPool objectPool = new GenericObjectPool();
-        objectPool.setMaxActive(4);
+        objectPool.setMaxActive(PWS.corePoolThreads);
 
         ConnectionFactory connectionFactory = new DriverManagerConnectionFactory(this.dbAddress,
                 this.user,

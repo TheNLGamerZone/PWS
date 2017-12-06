@@ -18,7 +18,7 @@ import java.security.Security;
 
 public class PWS {
     // Globale instellingen
-    public static final int corePoolThreads = 5;
+    public static final int corePoolThreads = 15;
     public static Modes currentMode;
     public static KeyPair keyPair;
 

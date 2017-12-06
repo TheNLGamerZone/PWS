@@ -24,7 +24,6 @@ import java.nio.charset.Charset;
 import java.nio.charset.CharsetEncoder;
 import java.security.KeyPair;
 import java.util.*;
-import java.util.concurrent.Callable;
 
 import static nl.hetbaarnschlyceum.pws.PWS.print;
 
@@ -91,10 +90,13 @@ public class Server implements Runnable
             }
         } catch (IOException e)
         {
-            print("[WAARSCHUWING] Client (%s) heeft onverwacht de verbinding verbroken: %s",
-                    client.getIP(),
-                    e.getMessage());
-            TCServer.getClientManager().clientConnectionDropped(client);
+            if (client != null)
+            {
+                print("[WAARSCHUWING] Client (%s) heeft onverwacht de verbinding verbroken: %s",
+                        client.getIP(),
+                        e.getMessage());
+                TCServer.getClientManager().clientConnectionDropped(client);
+            }
 
             try {
                 socketChannel.close();
@@ -162,7 +164,7 @@ public class Server implements Runnable
                     switch (requestType)
                     {
                         case "CALL_REQUEST":
-                            int number = Integer.valueOf(request.split(Request.argumentSeperator)[0]);
+                            int number = Integer.valueOf(request.split(Request.argumentSeperator)[1]);
 
                             TCServer.getClientManager().call(client, number, requestID);
                             break;
@@ -171,7 +173,7 @@ public class Server implements Runnable
                     }
                     return null;
                 });
-            } else if (messageData[1] == PWS.MessageIdentifier.REQUEST_RESULT)
+            } else if (messageData[0] == PWS.MessageIdentifier.REQUEST_RESULT)
             {
                 UUID requestID = UUID.fromString((String) messageData[1]);
                 String requestResult = (String) messageData[2];
@@ -438,8 +440,9 @@ public class Server implements Runnable
 
             if (i < 4)
             {
-                if (messageIdentifier == PWS.MessageIdentifier.REQUEST
+                if ((messageIdentifier == PWS.MessageIdentifier.REQUEST
                         || messageIdentifier == PWS.MessageIdentifier.REQUEST_RESULT)
+                        && i == 1)
                 {
                     arguments.add(arg);
                 }

@@ -34,18 +34,41 @@ public class ClientManager {
         client.addFailedAttempt();
     }
 
+    public void processRequestResult(Client client, String requestResult)
+    {
+        //TODO: Dit maken
+    }
+
     public void call(Client client,
                      int targetNumber,
                      UUID requestID)
     {
+        print("[INFO] Gebruikers %s probeert %s te bellen..",
+                client.getName(),
+                String.valueOf(targetNumber)
+        );
         String response = Server.prepareMessage(client,
                 PWS.MessageIdentifier.REQUEST_RESULT,
                 requestID,
-                String.valueOf(OperationResult.FAILED_SYS_ERROR)
+                Request.CALL_REQUEST_RESULT.replace("OR",
+                        String.valueOf(OperationResult.FAILED_SYS_ERROR))
         );
 
         try
         {
+            if (targetNumber == client.getNumber())
+            {
+                response = Server.prepareMessage(client,
+                        PWS.MessageIdentifier.REQUEST_RESULT,
+                        requestID,
+                        Request.CALL_REQUEST_RESULT.replace("OR",
+                                String.valueOf(OperationResult.FAILED_SAME_NUMBER))
+                );
+
+                Server.sendMessage(client, response);
+                return;
+            }
+
             int existingNumber = checkAvailable("DEVNM_X76786X", targetNumber);
 
             if (existingNumber != OperationResult.FAILED_DUPLICATE_NUMBER)
@@ -53,7 +76,8 @@ public class ClientManager {
                 response = Server.prepareMessage(client,
                         PWS.MessageIdentifier.REQUEST_RESULT,
                         requestID,
-                        String.valueOf(OperationResult.FAILED_UNKNOWN_NUMBER)
+                        Request.CALL_REQUEST_RESULT.replace("OR",
+                                String.valueOf(OperationResult.FAILED_UNKNOWN_NUMBER))
                 );
 
                 Server.sendMessage(client, response);
@@ -70,7 +94,8 @@ public class ClientManager {
                 response = Server.prepareMessage(client,
                         PWS.MessageIdentifier.REQUEST_RESULT,
                         requestID,
-                        String.valueOf(OperationResult.FAILED_USER_OFFLINE)
+                        Request.CALL_REQUEST_RESULT.replace("OR",
+                                String.valueOf(OperationResult.FAILED_USER_OFFLINE))
                 );
 
                 Server.sendMessage(client, response);
@@ -80,7 +105,8 @@ public class ClientManager {
             response = Server.prepareMessage(client,
                     PWS.MessageIdentifier.REQUEST_RESULT,
                     requestID,
-                    String.valueOf(OperationResult.SUCCESS_CALLING)
+                    Request.CALL_REQUEST_RESULT.replace("OR",
+                            String.valueOf(OperationResult.SUCCESS_CALLING))
             );
 
             Server.sendRequest(targetClient,
@@ -95,6 +121,7 @@ public class ClientManager {
             );
         }
 
+        print("[INFO] Resultaat verzoek %s: %s", client.getName(), response);
         Server.sendMessage(client, response);
     }
 
@@ -115,6 +142,8 @@ public class ClientManager {
             SecretKey sessionKey = client.getSessionKey();
 
             this.loadedClients.remove(client);
+
+            print("[INFO] Gebruiker %s is uitgelogd", client.getName());
             return sessionKey;
         }
 

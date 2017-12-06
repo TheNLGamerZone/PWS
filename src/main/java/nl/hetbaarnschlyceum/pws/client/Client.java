@@ -1,10 +1,13 @@
 package nl.hetbaarnschlyceum.pws.client;
 
+import javafx.application.Platform;
+import javafx.scene.control.Alert;
+import javafx.scene.control.ButtonType;
 import nl.hetbaarnschlyceum.pws.PWS;
 import nl.hetbaarnschlyceum.pws.client.gui.GUIMainClass;
-
-import java.util.HashMap;
-import java.util.UUID;
+import nl.hetbaarnschlyceum.pws.client.tasks.CallTask;
+import nl.hetbaarnschlyceum.pws.server.tc.OperationResult;
+import nl.hetbaarnschlyceum.pws.server.tc.Request;
 
 import static nl.hetbaarnschlyceum.pws.PWS.print;
 
@@ -69,5 +72,25 @@ public class Client
             }
         }
         return false;
+    }
+
+    public static void startCall(int targetNumber)
+    {
+        Alert callAlert = new Alert(Alert.AlertType.CONFIRMATION);
+
+        Platform.runLater(() -> {
+            callAlert.setContentText(targetNumber + " bellen..");
+            callAlert.setHeaderText("Bellen..");
+            callAlert.getButtonTypes().clear();
+            callAlert.show();
+        });
+
+        ConnectionThread.requestFromServer(
+                Request.CALL_REQUEST
+                        .replace("NUMBER",
+                                String.valueOf(targetNumber)
+                        )
+                , new CallTask(callAlert)
+        );
     }
 }

@@ -6,6 +6,7 @@ import nl.hetbaarnschlyceum.pws.PWS;
 import nl.hetbaarnschlyceum.pws.client.gui.GUIMainClass;
 import nl.hetbaarnschlyceum.pws.client.gui.LoginScreen;
 import nl.hetbaarnschlyceum.pws.client.gui.MainScreen;
+import nl.hetbaarnschlyceum.pws.client.tasks.Task;
 import nl.hetbaarnschlyceum.pws.crypto.AES;
 import nl.hetbaarnschlyceum.pws.crypto.ECDH;
 import nl.hetbaarnschlyceum.pws.crypto.Hash;
@@ -32,7 +33,7 @@ public class ConnectionThread implements Runnable
     private static BufferedWriter bufferedWriter;
     private static Thread thread;
     private static BlockingQueue<String> blockingQueue;
-    private static HashMap<String, String> resultList;
+    public static HashMap<UUID, Runnable> taskList;
     private static ConnectionReadThread readThread;
     private static StringBuilder stringBuffer;
 
@@ -50,7 +51,7 @@ public class ConnectionThread implements Runnable
         {
             socket = new Socket(serverIP, port);
             blockingQueue = new LinkedBlockingDeque<>();
-            resultList = new HashMap<>();
+            taskList = new HashMap<>();
             stringBuffer = new StringBuilder();
 
             print("[INFO] Verbonden met de server (%s:%s)", serverIP, String.valueOf(port));
@@ -85,7 +86,7 @@ public class ConnectionThread implements Runnable
         }
     }
 
-    public static void closeConnection()
+    public void closeConnection()
     {
         if (thread != null)
         {
@@ -122,19 +123,19 @@ public class ConnectionThread implements Runnable
         }
     }
 
-    public String requestFromServer(String request)
+    public static void requestFromServer(String request, Runnable runnable)
     {
-        return requestFromServer(request, false, true);
+        requestFromServer(request, false, runnable);
     }
 
     public static void processedRequestFromServer(String processedRequest)
     {
-        requestFromServer(processedRequest, true, false);
+        requestFromServer(processedRequest, true, null);
     }
 
-    private static String requestFromServer(String request,
+    private static void requestFromServer(String request,
                                      boolean processed,
-                                     boolean blocking)
+                                     Runnable runnable)
     {
         String formattedRequest;
 
@@ -146,23 +147,18 @@ public class ConnectionThread implements Runnable
             formattedRequest = prepareMessage(PWS.MessageIdentifier.REQUEST, request);
         }
 
-        String messageID = request.split("<<->>")[0]
-                .split("<<&>>")[0];
+        UUID messageID = UUID.fromString(
+                formattedRequest
+                        .split("<<->>")[1]
+                        .split("<<&>>")[0]
+        );
 
         if (blockingQueue.offer(formattedRequest))
         {
-            if (blocking) {
-                while (true) {
-                    String requestResult = resultList.get(messageID);
-
-                    if (requestResult != null) {
-                        resultList.remove(messageID);
-                        return requestResult;
-                    }
-                }
+            if (runnable != null) {
+                taskList.put(messageID, runnable);
             }
         }
-        return null;
     }
 
     void processDataReceived(String data)
@@ -188,7 +184,17 @@ public class ConnectionThread implements Runnable
 
         if (messageData[0] == PWS.MessageIdentifier.REQUEST_RESULT)
         {
-            // Normaal verzoek
+            UUID requestID = UUID.fromString((String) messageData[1]);
+            String request = (String) messageData[2];
+            Task task = (Task) taskList.get(requestID);
+
+            if (task == null)
+            {
+                return;
+            }
+
+            task.setRequest(request);
+            new Thread(task).start();
         } else if (messageData[0] == PWS.MessageIdentifier.REQUEST)
         {
 
@@ -418,8 +424,9 @@ public class ConnectionThread implements Runnable
 
             if (i < 4)
             {
-                if (messageIdentifier == PWS.MessageIdentifier.REQUEST
+                if ((messageIdentifier == PWS.MessageIdentifier.REQUEST
                         || messageIdentifier == PWS.MessageIdentifier.REQUEST_RESULT)
+                        && i == 1)
                 {
                     arguments.add(arg);
                 }
